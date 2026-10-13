@@ -1,11 +1,12 @@
 import { useStore } from '../lib/store';
 import { money } from '../lib/engine';
+import { describeSync } from '../lib/sync';
 import { SECTIONS } from '../lib/types';
 import { Card, RowLink } from '../components/ui';
 import type { Route } from '../App';
 
 export default function More({ go }: { go: (r: Route) => void }) {
-  const { data, engine, saved } = useStore();
+  const { data, engine, saved, session, syncConfigured, sync, online } = useStore();
   const unconfirmed = SECTIONS.filter(s => !data.confirmed[s.key]).length;
 
   return (
@@ -38,6 +39,17 @@ export default function More({ go }: { go: (r: Route) => void }) {
 
       <Card title="The app">
         <RowLink
+          label="Account"
+          meta={!syncConfigured
+            ? <span className="pill warn">this device only</span>
+            : !session
+              ? <span className="pill warn">not signed in</span>
+              : sync.dirty || !online
+                ? <span className="pill warn">{online ? 'not sent yet' : 'offline'}</span>
+                : <span className="pill ok">synced</span>}
+          onClick={() => go('account')}
+        />
+        <RowLink
           label="Setup"
           meta={unconfirmed > 0
             ? <span className="pill warn">{unconfirmed} to confirm</span>
@@ -58,7 +70,7 @@ export default function More({ go }: { go: (r: Route) => void }) {
       )}
 
       <div style={{ marginTop: 18, fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center' }}>
-        Birr · everything stays on this device for now
+        {session ? describeSync(sync, online) : 'Birr · everything stays on this device'}
       </div>
     </>
   );

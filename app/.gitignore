@@ -1,5 +1,4 @@
 node_modules
 dist
 dev-dist
-preview
 dbg.mjs

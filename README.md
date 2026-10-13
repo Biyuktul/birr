@@ -17,7 +17,8 @@ Each person owns their own data. There is no shared pot.
 |---|---|
 | `app/` | **The real app.** React + TypeScript + Vite, installable PWA. |
 | `.github/workflows/deploy.yml` | Builds and deploys to GitHub Pages on every push to `main`. Runs the assertions first. |
-| `schema.sql` | PostgreSQL schema for the backend (Phase 2). Validated against a real Postgres 16. |
+| `supabase-setup.sql` | **Run this once** in the Supabase SQL editor. Creates the ledger table and its security rules. |
+| `schema.sql` | A fuller relational schema, kept for the day one document per person is not enough. Not in use. |
 | `*.js`, `dist/` | The original single-file prototype. Kept for reference; superseded by `app/`. |
 
 ## Running the app
@@ -34,8 +35,8 @@ Other scripts:
 
 ```bash
 node e2e.mjs            # drives the built app at iPhone size and checks the real flows
-node inline-build.mjs   # squashes the build into one self-contained HTML file
-node verify-preview.mjs # checks that single file works with no network
+node focus-test.mjs    # proves typing in Setup keeps focus and stores what was typed
+node audit.mjs         # edge cases: empty dates, zero accounts, far-future plans, old Safari APIs
 node scripts-gen-icons.mjs  # regenerates the app icons
 ```
 
@@ -47,7 +48,9 @@ app/src/lib/
   engine.ts    the financial engine. Pure functions, no React, no storage, no IO
   parser.ts    bank SMS parser
   selftest.ts  61 assertions, shared by `npm test` AND the in-app Checks screen
-  store.tsx    state and persistence. Swap this one file to move to a backend
+  store.tsx    state, persistence and sync
+  sync.ts      accounts and syncing, including the planner that decides
+               pull / push / stop-and-ask
   defaults.ts  the placeholder figures a new install starts from
 ```
 
@@ -89,13 +92,36 @@ URL so a refresh cannot book it twice.
 Whether iOS runs the automation without a tap varies by version — it needs
 testing on the actual device.
 
+## Using it on more than one device
+
+Each person gets an account and their own figures. Set it up once:
+
+1. Make a free project at supabase.com
+2. Run `supabase-setup.sql` in that project's SQL editor
+3. In the app: More → Account, paste the project URL and the **anon** key, then
+   sign up
+4. Do the same on the other device with the same email
+
+The anon key is designed to be public — row-level security means it only ever
+reaches your own row. The **service_role** key must never be pasted anywhere.
+
+### How syncing behaves
+
+The device is always the working copy, so nothing ever waits on the network and
+the app works with no signal. Changes go up a couple of seconds after you stop
+typing and come down when you open the app.
+
+Every write names the revision it was based on, and the database rejects it if
+that revision has moved on. So if both devices changed things while apart, Birr
+**stops and asks** rather than picking a winner. `planSync` in `sync.ts` holds
+that decision, and its tests sweep every combination to prove local work is
+never pulled over.
+
 ## Status
 
 **Done** — the app, offline, installable, self-validating; Setup for every
-figure; SMS parsing and the Shortcut capture path; the Pages deploy.
-
-**Next** — the backend (`schema.sql`): login, sync across devices, so data is not
-stuck on one phone. Until then, take a backup from Setup now and then.
+figure; SMS parsing and the Shortcut capture path; Pages deploy; accounts and
+multi-device sync.
 
 **Needed** — real SMS samples from telebirr (127), CBE, Berhan, Bunna, Dashen
 and M-Pesa, with the account digits masked but the wording and spacing exact.

@@ -45,13 +45,25 @@ for (const tab of ['home','calendar','inbox','forecast','more']) {
 step('all 5 tabs render');
 
 // ---- 2. every sub screen renders
-for (const r of ['accounts','loan','ekub','relocation','budget','setup','checks']) {
+for (const r of ['accounts','loan','ekub','relocation','budget','setup','checks','account']) {
   await p.evaluate(t => { location.hash = '/' + t; }, r);
   await p.waitForTimeout(260);
   const txt = await p.textContent('main');
   if (!txt || txt.length < 40) fail(`${r} rendered almost nothing`);
 }
-step('all 7 sub-screens render');
+step('all 8 sub-screens render');
+
+// ---- account screen offers setup when sync is not configured
+await p.evaluate(() => { location.hash = '/account'; });
+await p.waitForTimeout(350);
+const acctTxt = await p.textContent('main');
+if (!/Project URL/i.test(acctTxt)) fail('Account screen does not offer to connect a project');
+else step('account screen offers to connect sync');
+const navTxt = await p.evaluate(() => { location.hash = '/more'; return 1; });
+await p.waitForTimeout(300);
+const moreTxt = await p.textContent('main');
+if (!/this device only/i.test(moreTxt)) fail('More screen does not show the unsynced state');
+else step('more screen shows "this device only"');
 
 // ---- 3. checks screen reports all passing
 await p.evaluate(() => { location.hash = '/checks'; });
