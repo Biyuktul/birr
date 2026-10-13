@@ -17,7 +17,14 @@ Open `dist/birr.html` in any browser. All state lives in that browser
 node run-tests.js    # 51 engine assertions, in the terminal
 node verify-ui.js    # renders all 10 screens in a stubbed DOM
 node shot.js         # screenshots light/dark/mobile via Chromium
+./test-schema.sh     # applies schema.sql to a throwaway PostgreSQL 16 and
+                     # checks all nine integrity guards fire
 ```
+
+`schema.sql` has been applied to a real PostgreSQL 16: 13 tables, row-level
+security enabled with a policy on every one of them, and nine constraint guards
+verified by insert — duplicate bank references, duplicate SMS ingestion and
+duplicate Ekub rounds are all rejected at the database level.
 
 The **Checks** tab runs the same 51 assertions live in the browser. If any fail,
 nothing on the other screens should be believed.
