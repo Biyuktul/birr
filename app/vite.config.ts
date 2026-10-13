@@ -2,7 +2,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Stamped into the build so the app can show which version is actually
+// running — the difference between "the fix is not deployed" and "your
+// phone is still serving a cached copy".
+const BUILD_ID = new Date().toISOString().slice(0, 16).replace('T', ' ');
+
 export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   // Relative base so the built app works from any path, including file://-ish
   // static hosts and sub-directories.
   base: './',
@@ -31,6 +37,10 @@ export default defineConfig({
         // Everything is static and small; cache it all so the app opens offline.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         cleanupOutdatedCaches: true,
+        // Take over straight away rather than waiting for every tab to close —
+        // an installed app on iOS may not be "closed" for days.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

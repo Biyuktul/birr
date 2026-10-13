@@ -71,6 +71,34 @@ export default function More({ go }: { go: (r: Route) => void }) {
 
       <div style={{ marginTop: 18, fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center' }}>
         {session ? describeSync(sync, online) : 'Birr · everything stays on this device'}
+        <div style={{ marginTop: 4 }}>
+          version {__BUILD_ID__}
+          {' · '}
+          <button
+            onClick={() => {
+              // Clear the offline cache and fetch everything fresh. The escape
+              // hatch for a phone stuck on an old copy of the app.
+              void (async () => {
+                try {
+                  if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map(r => r.unregister()));
+                  }
+                  if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(k => caches.delete(k)));
+                  }
+                } finally {
+                  location.reload();
+                }
+              })();
+            }}
+            style={{
+              background: 'none', border: 0, padding: 0, font: 'inherit',
+              color: 'var(--series-1)', textDecoration: 'underline', cursor: 'pointer',
+            }}
+          >force update</button>
+        </div>
       </div>
     </>
   );
