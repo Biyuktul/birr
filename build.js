@@ -18,7 +18,7 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Birr</title>
+<title>Birr Household Finance</title>
 <style>
 ${css}
 </style>
