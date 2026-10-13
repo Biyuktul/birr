@@ -1,125 +1,103 @@
-# Birr — household finance, Ethiopia
+# Birr
 
-A prototype that models real household money: six accounts, income that arrives
-when it arrives, a company loan repaid from payroll, an Ekub cycle, bank SMS
-capture, and an honest answer to "can we afford to move?".
+Household finance for Ethiopia. Several bank accounts, income that arrives when
+it arrives, a company loan repaid from payroll, an Ekub cycle, bank-SMS capture,
+and an honest answer to "can we afford to move?".
 
-## Run it
+**Live app:** https://biyuktul.github.io/birr/ — open in Safari, then
+Share → *Add to Home Screen*.
 
-```
-node build.js        # produces dist/birr.html — one file, no network, no install
-```
+Each person owns their own data. There is no shared pot.
 
-Open `dist/birr.html` in any browser. All state lives in that browser
-(`localStorage`); nothing leaves the machine.
+---
 
-```
-node run-tests.js    # 51 engine assertions, in the terminal
-node verify-ui.js    # renders all 10 screens in a stubbed DOM
-node shot.js         # screenshots light/dark/mobile via Chromium
-./test-schema.sh     # applies schema.sql to a throwaway PostgreSQL 16 and
-                     # checks all nine integrity guards fire
-```
+## Repository layout
 
-`schema.sql` has been applied to a real PostgreSQL 16: 13 tables, row-level
-security enabled with a policy on every one of them, and nine constraint guards
-verified by insert — duplicate bank references, duplicate SMS ingestion and
-duplicate Ekub rounds are all rejected at the database level.
-
-The **Checks** tab runs the same 51 assertions live in the browser. If any fail,
-nothing on the other screens should be believed.
-
-## Read this first
-
-**The numbers in `seed.js` are placeholders, not your money.** The previous
-session's real data was lost when its container was reclaimed, before anything
-was committed. The engine is correct; its inputs are invented. Every screen
-carries a banner saying so until the seed is replaced.
-
-Edit **`seed.js`** only — it is the single source of truth. Everything marked
-`// ?? PLACEHOLDER` needs a real value.
-
-## Files
-
-| File | What it is |
+| Path | What it is |
 |---|---|
-| `seed.js` | **The only file you edit.** Accounts, income, bills, loan, Ekub, relocation, budgets. |
-| `engine.js` | Pure financial engine. No DOM, no storage. Every claim the app makes is computed here. |
-| `parser.js` | Bank SMS parser. Per-provider patterns + a generic extractor, with a confidence score. |
-| `tests.js` | 51 assertions against the engine and parser. |
-| `ui.js` | The 10 screens. |
-| `styles.css` | Validated colour palette, light and dark. |
-| `build.js` | Inlines everything into `dist/birr.html`. |
-| `schema.sql` | PostgreSQL schema for the real app (not used by the prototype). |
+| `app/` | **The real app.** React + TypeScript + Vite, installable PWA. |
+| `.github/workflows/deploy.yml` | Builds and deploys to GitHub Pages on every push to `main`. Runs the assertions first. |
+| `schema.sql` | PostgreSQL schema for the backend (Phase 2). Validated against a real Postgres 16. |
+| `*.js`, `dist/` | The original single-file prototype. Kept for reference; superseded by `app/`. |
 
-## What the engine actually does
+## Running the app
 
-- **Balances** — opening balance plus transactions, per account and combined.
-  Transactions dated before an account's opening are ignored, so the opening
-  figure is never double-counted.
-- **Safe to spend** — combined balance, minus every commitment falling due
-  before the next *dependable* payday, minus a buffer you refuse to touch.
-  Never shows a negative number; reports a shortfall instead.
-- **Loan** — monthly amortisation with the payroll deduction and any manual
-  payments, interest accrued monthly, final payment clamped so it cannot
-  overpay. Detects the case where the deduction never clears the balance.
-- **Ekub** — rounds paid, next due, payout round and amount. Makes the point
-  that a cycle nets to zero and what you are actually buying is *timing*.
-- **Forecast** — daily balance over 30/60/90/180 days under three scenarios:
-  income on time, income late, and late plus an overspend. Late is never
-  rosier than base; stress is never rosier than late (both asserted).
-- **Relocation** — upfront cash needed vs cash you will actually have at the
-  target date under the *late* scenario, plus the monthly position afterwards.
-  Gives a verdict and what would have to change.
-- **Reconciliation** — the bank's stated balance vs Birr's calculated one, with
-  a drift alert. This is what catches a missed transaction or a silent fee.
+```bash
+cd app
+npm install
+npm run dev        # http://localhost:5173, --host so a phone on the same wifi can reach it
+npm test           # 61 engine assertions
+npm run build      # production build into app/dist
+```
 
-### One modelling subtlety worth knowing
+Other scripts:
 
-If the loan is repaid by payroll deduction, the salary figure in `seed.js` must
-be the **net amount that actually lands**, and `netOfLoanDeduction: true` must be
-set. Otherwise the repayment gets counted twice — once as missing income and
-again as a cash outflow — and every forecast is wrong by the deduction amount.
-There is an assertion for this.
+```bash
+node e2e.mjs            # drives the built app at iPhone size and checks the real flows
+node inline-build.mjs   # squashes the build into one self-contained HTML file
+node verify-preview.mjs # checks that single file works with no network
+node scripts-gen-icons.mjs  # regenerates the app icons
+```
 
-## Open decisions (carried forward — these still block the real app)
+## How it is put together
 
-### 1. Platform — the big one
+```
+app/src/lib/
+  types.ts     the data model — one object holds everything a person owns
+  engine.ts    the financial engine. Pure functions, no React, no storage, no IO
+  parser.ts    bank SMS parser
+  selftest.ts  61 assertions, shared by `npm test` AND the in-app Checks screen
+  store.tsx    state and persistence. Swap this one file to move to a backend
+  defaults.ts  the placeholder figures a new install starts from
+```
 
-| | SMS auto-capture | Cost | Notes |
-|---|---|---|---|
-| **Android only** | Full, automatic | Free sideload | The whole loop works. Recommended. |
-| **iPhone only** | **None.** Apple forbids SMS access | $99/year developer account | Falls back to iOS Shortcuts automation or pasting into the Inbox screen. |
-| **Both** | Android full, iPhone degraded | $99/year + extra work | Two capture paths to maintain. |
+Everything the app claims about money is computed in `engine.ts`. The Checks
+screen runs the assertions **against your own data**, not a fixture — so if a
+figure is ever wrong, the app says so instead of showing it.
 
-This changes effort, cost, and whether the central feature works at all.
+### The one modelling subtlety
 
-### 2. Real SMS samples
+If the loan is repaid by payroll deduction, the income figure must be the
+**net amount that actually lands**, with `netOfLoanDeduction` set. Otherwise the
+repayment is counted twice — once as missing income, again as cash going out —
+and every forecast is wrong by the deduction. There is an assertion for this.
 
-2–3 per provider — **telebirr (127), CBE, Berhan, Bunna, Dashen, M-Pesa**.
-Mask the account digits, but keep the wording, spacing and punctuation exactly.
-The patterns in `parser.js` are reconstructions and will mis-read real messages
-until tuned. Also needed: the **sender ID exactly as it appears** on the phone.
+## Entering your figures
 
-### 3. Seed data
+All of it is editable in the app under **Setup**. Each section is marked
+*placeholder* or *yours*, and the warnings clear as you confirm them. Nothing
+needs editing in code.
 
-Everything in the banner on the Home screen, listed in `seed.js` as
-`NEEDS_CONFIRMATION`.
+A new install starts from invented placeholder figures so the app has something
+to show. None of it is anyone's real money, and the app says so until you
+replace it.
 
-### 4. Household
+## Getting bank messages in, on an iPhone
 
-Is this shared with your wife from day one (two logins, one household, row-level
-security) or single-user first? `schema.sql` is built for shared from day one,
-which costs nothing now and is painful to retrofit later.
+iOS does not let **any** app read SMS — not this one, and not a native app
+either. The way round it is a Shortcut that forwards the message:
 
-## If the real app gets built
+1. Shortcuts → Automation → New → **Message**
+2. Sender contains `127` (one automation per bank)
+3. Action: **Open URL**
+4. URL: `https://biyuktul.github.io/birr/?sender=127&sms=` + the *Shortcut Input* variable
+5. Turn off "Ask Before Running" if your iOS version allows it
 
-React Native + Expo + TypeScript, Supabase/PostgreSQL with row-level security,
-Expo Router, React Hook Form + Zod. `engine.js` ports across essentially
-unchanged — it is already pure, typed by shape, and covered by the assertions
-in `tests.js`.
+Birr reads those values on open, files the message in the inbox, and scrubs the
+URL so a refresh cannot book it twice.
 
-## Keep this repository
+Whether iOS runs the automation without a tap varies by version — it needs
+testing on the actual device.
 
-This work was rebuilt once already because nothing was committed. Push it
-somewhere before the container is reclaimed.
+## Status
+
+**Done** — the app, offline, installable, self-validating; Setup for every
+figure; SMS parsing and the Shortcut capture path; the Pages deploy.
+
+**Next** — the backend (`schema.sql`): login, sync across devices, so data is not
+stuck on one phone. Until then, take a backup from Setup now and then.
+
+**Needed** — real SMS samples from telebirr (127), CBE, Berhan, Bunna, Dashen
+and M-Pesa, with the account digits masked but the wording and spacing exact.
+The parser patterns are reconstructions and will misread real messages until
+they are tuned against the real thing.
