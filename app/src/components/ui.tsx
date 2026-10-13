@@ -57,14 +57,24 @@ export function Field({ label, children }: { label: string; children: React.Reac
   );
 }
 
-/** A number input that lets the box be empty while typing without
- *  snapping the stored value to 0 on every keystroke. */
+/** A number input you can actually type in.
+ *
+ *  The box keeps its own text while you are typing, because the stored number
+ *  and the text on screen are not the same thing: "12." parses to 12, and if we
+ *  pushed that back into the box it would eat the decimal point as you typed it.
+ *  So the text is only re-synced from the outside when the incoming value really
+ *  differs from what the box currently says. */
 export function NumberInput({ value, onChange, placeholder, min, step }: {
   value: number; onChange: (n: number) => void;
   placeholder?: string; min?: number; step?: number;
 }) {
   const [text, setText] = useState(String(value));
-  useEffect(() => { setText(String(value)); }, [value]);
+  useEffect(() => {
+    if (parseFloat(text) !== value) setText(String(value));
+    // deliberately keyed on `value` alone: re-running on `text` would undo
+    // each keystroke that has not finished parsing yet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
   return (
     <input
       type="number"

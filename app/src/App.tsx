@@ -101,6 +101,29 @@ export default function App() {
     window.scrollTo(0, 0);
   }, []);
 
+  /* On a phone the keyboard slides up over the bottom of the screen, and a
+     fixed nav bar ends up sitting on top of the field being typed into. Step
+     it out of the way while a text field has focus. (Selects are left alone —
+     their picker does not need the room.) */
+  useEffect(() => {
+    const isTyping = (el: EventTarget | null) => {
+      const t = el as HTMLElement | null;
+      if (!t) return false;
+      const tag = t.tagName;
+      return tag === 'TEXTAREA' || (tag === 'INPUT' && (t as HTMLInputElement).type !== 'checkbox');
+    };
+    const on = (e: FocusEvent) => {
+      document.body.classList.toggle('typing', isTyping(e.target));
+    };
+    const off = () => document.body.classList.remove('typing');
+    document.addEventListener('focusin', on);
+    document.addEventListener('focusout', off);
+    return () => {
+      document.removeEventListener('focusin', on);
+      document.removeEventListener('focusout', off);
+    };
+  }, []);
+
   const pendingCount = data.inbox.length;
   const unconfirmed = Object.values(data.confirmed).filter(v => !v).length;
 

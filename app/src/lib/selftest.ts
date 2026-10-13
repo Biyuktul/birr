@@ -27,8 +27,14 @@ export interface TestRun {
 /** A check returns true to pass, or a string describing the failure. */
 type Check = () => true | string;
 
+/** structuredClone needs iOS 15.4+. The data is plain JSON, so a round-trip is
+ *  an exact equivalent and works on every iPhone that can run the app at all. */
+function deepClone<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v)) as T;
+}
+
 export function runSelfTest(base?: Data): TestRun {
-  const DATA: Data = base ? structuredClone(base) : makeDefaultData('2026-10-13');
+  const DATA: Data = base ? deepClone(base) : makeDefaultData('2026-10-13');
   // Pin the date so date-sensitive assertions are deterministic.
   if (!base) DATA.meta.asOf = '2026-10-13';
 
@@ -47,7 +53,7 @@ export function runSelfTest(base?: Data): TestRun {
   }
 
   const near = (a: number, b: number, tol = 0.02) => Math.abs(a - b) <= tol;
-  const clone = (): Data => structuredClone(DATA);
+  const clone = (): Data => deepClone(DATA);
   const E = makeEngine(DATA);
   const asOf = DATA.meta.asOf;
 

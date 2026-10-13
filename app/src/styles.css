@@ -107,6 +107,11 @@ header.top .back {
 main { flex: 1; padding: 0 16px 24px; max-width: 760px; width: 100%; margin: 0 auto; }
 
 /* ---------- bottom nav ---------- */
+/* While a text field has focus the on-screen keyboard takes the bottom of the
+   screen; get the nav out of the way rather than let it fight for the space. */
+body.typing nav.bottom { display: none; }
+body.typing .app { padding-bottom: 16px; }
+
 nav.bottom {
   position: fixed;
   bottom: 0; left: 0; right: 0;
