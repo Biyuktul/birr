@@ -118,11 +118,27 @@ function friendly(message: string): string {
   if (m.includes('failed to fetch') || m.includes('network'))
     return 'No connection. Your work is saved on this device and will go up when you are back online.';
   if (m.includes('relation') && m.includes('does not exist'))
-    return 'The database is not set up yet — the ledgers table is missing.';
+    return 'The database is not set up yet — supabase-setup.sql has not been run on this project.';
+  if (m.includes('email not confirmed'))
+    return 'This email has not been confirmed yet. Either open the link Supabase emailed you, '
+      + 'or switch confirmation off in Supabase → Authentication → Sign In / Providers → Email → '
+      + '"Confirm email". For a private app of your own, switching it off is simpler and its '
+      + 'built-in email sending is rate-limited anyway.';
+  if (m.includes('already registered') || m.includes('already been registered'))
+    return 'That email already has an account here. Sign in instead of creating one.';
+  if (m.includes('rate limit') || m.includes('too many'))
+    return 'Supabase is rate-limiting this for now — wait a few minutes and try again. '
+      + 'Its built-in email sending allows only a couple of messages an hour.';
+  if (m.includes('expired') && m.includes('link'))
+    return 'That confirmation link has expired or was already used. Rather than wait for '
+      + 'another, switch "Confirm email" off in Supabase → Authentication → Sign In / '
+      + 'Providers → Email, then simply sign in.';
   if (m.includes('jwt') || m.includes('expired'))
     return 'Your sign-in expired. Sign in again.';
   if (m.includes('invalid login'))
     return 'That email and password do not match.';
+  if (m.includes('password') && m.includes('6'))
+    return 'The password must be at least 6 characters.';
   return message;
 }
 
@@ -208,6 +224,35 @@ export function planSync(
   }
 
   return dirty ? { action: 'push', basedOnRev: localRev } : { action: 'idle' };
+}
+
+/* Supabase sends people back from a confirmation or reset email with the
+   outcome in the URL fragment. Read it once, scrub it, and say something
+   useful — otherwise a failed link lands on a blank-looking app.
+   (It only reaches us at all once the project's Site URL points here; by
+   default it points at localhost:3000, which is a dead end.) */
+export function takeAuthRedirectError(): string | null {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash;
+  if (!hash.includes('error')) return null;
+
+  const q = new URLSearchParams(hash.replace(/^#\/?/, ''));
+  const code = q.get('error_code');
+  const desc = q.get('error_description');
+  if (!code && !desc) return null;
+
+  // put the app back on a normal route
+  const clean = window.location.pathname + window.location.search;
+  window.history.replaceState(null, '', clean + '#/account');
+
+  const readable = (desc || '').replace(/\+/g, ' ');
+  if (code === 'otp_expired' || /expired|invalid/i.test(readable)) {
+    return 'That email link has expired or was already used. Rather than wait for another, '
+      + 'switch "Confirm email" off in Supabase → Authentication → Sign In / Providers → '
+      + 'Email, then sign in normally.';
+  }
+  if (code === 'access_denied') return `The email link was refused: ${readable || code}.`;
+  return readable || code || 'That email link did not work.';
 }
 
 /* ---------- auth ---------- */

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store';
 import {
   loadConfig, saveConfig, resetClient, signIn, signUp, describeSync,
+  takeAuthRedirectError,
 } from '../lib/sync';
 import { money } from '../lib/engine';
 import { Card, Field, useToast } from '../components/ui';
@@ -21,6 +22,10 @@ export default function Account() {
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [err, setErr] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [linkErr, setLinkErr] = useState<string | null>(null);
+
+  // A bounced confirmation / reset link leaves its reason in the URL.
+  useEffect(() => { setLinkErr(takeAuthRedirectError()); }, []);
 
   /* ---------- 1. not set up on this device ---------- */
   if (!syncConfigured) {
@@ -75,6 +80,9 @@ export default function Account() {
     return (
       <>
         <Card title={mode === 'in' ? 'Sign in' : 'Create your account'}>
+          {linkErr && (
+            <div className="alert warn"><span className="ico">△</span><span>{linkErr}</span></div>
+          )}
           <Field label="Email">
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}

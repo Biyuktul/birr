@@ -92,3 +92,35 @@ describe('sync status wording', () => {
     expect(describeSync(base, true)).toMatch(/not synced/i);
   });
 });
+
+describe('bounced email links', () => {
+  function withHash(hash: string) {
+    const replaced: string[] = [];
+    (globalThis as any).window = {
+      location: { hash, pathname: '/birr/', search: '' },
+      history: { replaceState: (_a: unknown, _b: unknown, url: string) => replaced.push(url) },
+    };
+    return replaced;
+  }
+
+  it('explains an expired confirmation link and how to get past it', async () => {
+    withHash('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
+    const { takeAuthRedirectError } = await import('../src/lib/sync');
+    const msg = takeAuthRedirectError();
+    expect(msg).toMatch(/expired or was already used/i);
+    expect(msg).toMatch(/Confirm email/);
+  });
+
+  it('puts the app back on a real route so it is not left on an error URL', async () => {
+    const replaced = withHash('#error=access_denied&error_code=otp_expired&error_description=x');
+    const { takeAuthRedirectError } = await import('../src/lib/sync');
+    takeAuthRedirectError();
+    expect(replaced.at(-1)).toBe('/birr/#/account');
+  });
+
+  it('stays quiet on a normal route', async () => {
+    withHash('#/account');
+    const { takeAuthRedirectError } = await import('../src/lib/sync');
+    expect(takeAuthRedirectError()).toBeNull();
+  });
+});
