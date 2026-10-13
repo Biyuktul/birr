@@ -1,0 +1,2351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Birr</title>
+<style>
+/* ============================================================
+   BIRR — styles
+   Colors are the validated reference palette (dataviz skill).
+   Dark mode is selected, not an automatic flip.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --plane: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+
+  --series-1: #2a78d6;   /* base scenario */
+  --series-2: #eb6834;   /* late scenario */
+  --series-3: #1baf7a;   /* stress scenario */
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --good-text: #006300;
+
+  --radius: 12px;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --plane: #0d0d0d;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --good-text: #0ca30c;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --plane: #0d0d0d;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --good-text: #0ca30c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--plane);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.wrap { max-width: 880px; margin: 0 auto; padding: 0 16px 96px; }
+
+/* ---------- header ---------- */
+header.app {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--plane);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px 0;
+}
+header.app .inner { max-width: 880px; margin: 0 auto; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 19px; margin: 0; letter-spacing: -0.01em; }
+.brand .asof { font-size: 12px; color: var(--text-muted); }
+
+nav.tabs {
+  display: flex; gap: 2px; overflow-x: auto; margin-top: 10px;
+  scrollbar-width: none;
+}
+nav.tabs::-webkit-scrollbar { display: none; }
+nav.tabs button {
+  appearance: none; background: none; border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary); font: inherit; font-size: 13.5px;
+  padding: 8px 11px; white-space: nowrap; cursor: pointer;
+  border-radius: 6px 6px 0 0;
+}
+nav.tabs button:hover { background: var(--surface-1); color: var(--text-primary); }
+nav.tabs button[aria-selected="true"] {
+  color: var(--text-primary); border-bottom-color: var(--series-1); font-weight: 600;
+}
+
+/* ---------- cards ---------- */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 14px;
+}
+.card > h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted); margin: 0 0 12px; font-weight: 600;
+}
+.card > h2 .sub { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+/* ---------- stat tiles ---------- */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .tiles { grid-template-columns: 1fr; } }
+.tile {
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.tile .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.tile .value { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; margin-top: 6px; }
+.tile .value.sm { font-size: 22px; }
+.tile .note { font-size: 12.5px; color: var(--text-secondary); margin-top: 6px; }
+.hero { font-size: 40px; font-weight: 680; letter-spacing: -0.025em; }
+
+/* ---------- alerts ---------- */
+.alert {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 11px 13px; border-radius: 10px; font-size: 13.5px;
+  border: 1px solid var(--border); margin-bottom: 8px;
+  background: var(--plane);
+}
+.alert:last-child { margin-bottom: 0; }
+.alert .ico { flex: 0 0 auto; font-weight: 700; line-height: 1.3; }
+.alert.danger { border-left: 3px solid var(--critical); }
+.alert.danger .ico { color: var(--critical); }
+.alert.warn { border-left: 3px solid var(--warning); }
+.alert.warn .ico { color: var(--serious); }
+.alert.good { border-left: 3px solid var(--good); }
+.alert.good .ico { color: var(--good-text); }
+
+/* ---------- tables ---------- */
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th {
+  text-align: left; font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600;
+  padding: 6px 8px; border-bottom: 1px solid var(--baseline);
+}
+td { padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.neg { color: var(--critical); }
+.pos { color: var(--good-text); }
+.muted { color: var(--text-muted); }
+.wrapper-scroll { overflow-x: auto; }
+
+/* ---------- buttons ---------- */
+button.btn {
+  appearance: none; font: inherit; font-size: 13px;
+  background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--baseline); border-radius: 8px;
+  padding: 6px 11px; cursor: pointer;
+}
+button.btn:hover { border-color: var(--series-1); color: var(--series-1); }
+button.btn.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; font-weight: 600; }
+button.btn.primary:hover { opacity: 0.9; color: #fff; }
+button.btn.ghost { border-color: var(--border); color: var(--text-secondary); }
+.btnrow { display: flex; gap: 6px; flex-wrap: wrap; }
+
+input[type="text"], input[type="number"], input[type="date"], textarea, select {
+  font: inherit; font-size: 14px; width: 100%;
+  background: var(--plane); color: var(--text-primary);
+  border: 1px solid var(--baseline); border-radius: 8px; padding: 8px 10px;
+}
+textarea { min-height: 90px; resize: vertical; font-size: 13.5px; }
+label.fld { display: block; font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.field { margin-bottom: 10px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* ---------- chips / pills ---------- */
+.pill {
+  display: inline-block; font-size: 11.5px; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.pill.ok { color: var(--good-text); border-color: var(--good); }
+.pill.bad { color: var(--critical); border-color: var(--critical); }
+.pill.warn { color: var(--serious); border-color: var(--serious); }
+
+/* ---------- bars (budget) ---------- */
+.bar-row { margin-bottom: 14px; }
+.bar-row:last-child { margin-bottom: 0; }
+.bar-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13.5px; margin-bottom: 5px; }
+.bar-head .cat { font-weight: 550; }
+.bar-head .vals { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 12.5px; }
+.bar-track {
+  position: relative; height: 10px; background: var(--grid);
+  border-radius: 5px; overflow: hidden;
+}
+.bar-fill { height: 100%; border-radius: 0 4px 4px 0; background: var(--series-1); }
+.bar-fill.over { background: var(--critical); }
+.bar-cap {
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: var(--text-primary); opacity: 0.55;
+}
+
+/* ---------- chart ---------- */
+.chart-shell { position: relative; overflow-x: auto; overflow-y: hidden; }
+svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
+@media (max-width: 620px) {
+  /* Keep the plot readable rather than shrinking it to illegibility;
+     it scrolls sideways the same way the tables do. */
+  svg.chart { min-width: 560px; }
+}
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; font-size: 12.5px; color: var(--text-secondary); }
+.legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 14px; height: 2.5px; border-radius: 2px; display: inline-block; }
+.tooltip {
+  position: absolute; pointer-events: none; opacity: 0;
+  background: var(--surface-1); border: 1px solid var(--baseline);
+  border-radius: 8px; padding: 8px 10px; font-size: 12.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); min-width: 150px;
+  transition: opacity 0.1s; z-index: 5;
+}
+.tooltip .tt-date { font-weight: 650; margin-bottom: 4px; }
+.tooltip .tt-row { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.tooltip .tt-ev { color: var(--text-muted); font-size: 11.5px; margin-top: 4px; }
+
+/* ---------- seed warning ---------- */
+.seedwarn {
+  background: var(--surface-1); border: 1px solid var(--serious);
+  border-left: 4px solid var(--serious);
+  border-radius: var(--radius); padding: 14px 16px; margin-top: 14px;
+}
+.seedwarn h3 { margin: 0 0 6px; font-size: 14.5px; }
+.seedwarn ul { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary); }
+.seedwarn li { margin-bottom: 3px; }
+
+/* ---------- checks ---------- */
+.check { display: flex; gap: 9px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--grid); }
+.check:last-child { border-bottom: 0; }
+.check .mk { flex: 0 0 auto; font-weight: 700; width: 16px; }
+.check.pass .mk { color: var(--good-text); }
+.check.fail .mk { color: var(--critical); }
+.check .detail { color: var(--critical); font-size: 12px; }
+
+.empty { color: var(--text-muted); font-size: 13.5px; padding: 6px 0; }
+.daygroup { margin-bottom: 16px; }
+.daygroup:last-child { margin-bottom: 0; }
+.daygroup .dayhead {
+  font-size: 12px; font-weight: 650; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding-bottom: 5px; border-bottom: 1px solid var(--baseline); margin-bottom: 8px;
+}
+.item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; flex-wrap: wrap; }
+.item .nm { flex: 1 1 140px; }
+.item .nm small { display: block; color: var(--text-muted); font-size: 11.5px; }
+.item .amt { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+</style>
+</head>
+<body>
+<header class="app">
+  <div class="inner">
+    <div class="brand"><h1>Birr</h1><span class="asof" id="asof"></span></div>
+    <nav class="tabs" id="tabs"></nav>
+  </div>
+</header>
+<div class="wrap"><div id="view"></div></div>
+<script>
+
+/* ===== seed.js ===== */
+/* ============================================================
+   BIRR — SEED DATA
+   ------------------------------------------------------------
+   THIS IS THE ONLY FILE YOU NEED TO EDIT TO MAKE THE NUMBERS REAL.
+
+   Every value marked  // ?? PLACEHOLDER  is a guess I invented so the
+   engine has something to chew on. It is NOT your money. Replace it.
+
+   Values marked  // ++ CONFIRMED  came from our earlier session and are
+   believed correct, but re-check them anyway.
+   ============================================================ */
+
+const SEED = {
+  meta: {
+    asOf: '2026-10-13',
+    currency: 'ETB',
+    household: 'Household',
+  },
+
+  /* ---------- POLICY: how cautious Birr should be ---------- */
+  policy: {
+    // Cash never to be counted as spendable. Your "don't touch" floor.
+    bufferAmount: 3000,            // ?? PLACEHOLDER
+    // Days of income delay assumed in the "late" forecast scenario.
+    lateIncomeDays: 10,            // ?? PLACEHOLDER
+    // Expense overrun assumed in the "stress" scenario.
+    stressOverrun: 0.15,           // ?? PLACEHOLDER
+    // Drift above this on reconciliation raises an alert.
+    driftAlertThreshold: 50,
+  },
+
+  /* ---------- ACCOUNTS (6) ---------- */
+  // opening = the real balance on openingDate. Get these from the app /
+  // last SMS / passbook on one single day, so they are all consistent.
+  accounts: [
+    { id: 'cbe',      name: 'CBE',           type: 'bank',   provider: 'CBE',      senderIds: ['CBE', 'CBEBirr'], opening: 0, openingDate: '2026-10-01' }, // ?? PLACEHOLDER
+    { id: 'berhan',   name: 'Berhan Bank',   type: 'bank',   provider: 'Berhan',   senderIds: ['Berhan'],         opening: 0, openingDate: '2026-10-01' }, // ?? PLACEHOLDER
+    { id: 'dashen',   name: 'Dashen Bank',   type: 'bank',   provider: 'Dashen',   senderIds: ['Dashen'],         opening: 0, openingDate: '2026-10-01' }, // ?? PLACEHOLDER
+    { id: 'bunna',    name: 'Bunna Bank',    type: 'bank',   provider: 'Bunna',    senderIds: ['Bunna'],          opening: 0, openingDate: '2026-10-01' }, // ?? PLACEHOLDER
+    { id: 'telebirr', name: 'telebirr',      type: 'mobile', provider: 'telebirr', senderIds: ['127'],            opening: 0, openingDate: '2026-10-01' }, // ?? PLACEHOLDER
+    { id: 'cash',     name: 'Cash on hand',  type: 'cash',   provider: null,       senderIds: [],                 opening: 0, openingDate: '2026-10-01' }, // ?? PLACEHOLDER
+  ],
+
+  /* ---------- CATEGORIES ---------- */
+  // Confirm or edit this list — it drives budgets and the inbox buttons.
+  categories: [
+    'Groceries', 'Transport', 'Child', 'Family support', 'Utilities',
+    'Eating out', 'Airtime', 'Health', 'Church', 'Rent', 'Debt', 'Ekub', 'Other',
+  ],
+
+  /* ---------- INCOME ---------- */
+  // confidence: 'high'   = you can plan around the date (salary)
+  //             'medium' = usually arrives, timing slips
+  //             'low'    = do not count on it (side work)
+  // netOfLoanDeduction: true means the loan repayment is ALREADY taken out
+  //   of this figure by payroll, so Birr must not subtract it again as cash.
+  income: [
+    {
+      id: 'salary', name: 'Salary (net)', accountId: 'cbe',
+      amount: 28000,                    // ?? PLACEHOLDER — net amount that actually lands
+      schedule: { type: 'monthly', dayOfMonth: 30 },  // ?? PLACEHOLDER
+      confidence: 'high',
+      netOfLoanDeduction: true,
+    },
+    {
+      id: 'side', name: 'Side income', accountId: 'telebirr',
+      amount: 4000,                     // ?? PLACEHOLDER
+      schedule: { type: 'irregular', dayOfMonth: 15 }, // ?? PLACEHOLDER
+      confidence: 'low',
+      netOfLoanDeduction: false,
+    },
+  ],
+
+  /* ---------- RECURRING BILLS & COMMITMENTS ---------- */
+  bills: [
+    { id: 'rent',      name: 'Rent',            amount: 9000, accountId: 'cbe',      category: 'Rent',           schedule: { type: 'monthly', dayOfMonth: 1 },  essential: true  }, // ?? PLACEHOLDER
+    { id: 'utilities', name: 'Electricity/water', amount: 900, accountId: 'telebirr', category: 'Utilities',      schedule: { type: 'monthly', dayOfMonth: 20 }, essential: true  }, // ?? PLACEHOLDER
+    { id: 'family',    name: 'Family support',  amount: 4000, accountId: 'cbe',      category: 'Family support', schedule: { type: 'monthly', dayOfMonth: 5 },  essential: true  }, // ?? PLACEHOLDER
+    { id: 'child',     name: 'Child / school',  amount: 2500, accountId: 'cbe',      category: 'Child',          schedule: { type: 'monthly', dayOfMonth: 8 },  essential: true  }, // ?? PLACEHOLDER
+    { id: 'transport', name: 'Transport',       amount: 2200, accountId: 'cash',     category: 'Transport',      schedule: { type: 'monthly', dayOfMonth: 1 },  essential: true  }, // ?? PLACEHOLDER
+    { id: 'airtime',   name: 'Airtime / data',  amount: 600,  accountId: 'telebirr', category: 'Airtime',        schedule: { type: 'monthly', dayOfMonth: 10 }, essential: false }, // ?? PLACEHOLDER
+    { id: 'church',    name: 'Church',          amount: 500,  accountId: 'cash',     category: 'Church',         schedule: { type: 'monthly', dayOfMonth: 7 },  essential: false }, // ?? PLACEHOLDER
+  ],
+
+  /* ---------- COMPANY LOAN ---------- */
+  loan: {
+    name: 'Company loan',
+    balance: 78557,                 // ++ CONFIRMED (from earlier session — re-check it is still current)
+    annualRate: 0,                  // ?? PLACEHOLDER — company loans are often 0%. Confirm.
+    autoDeductAmount: 16000,        // ?? PLACEHOLDER — the payroll deduction each month
+    autoDeductDay: 30,              // ?? PLACEHOLDER — same day as salary
+    // Extra one-off payments you make by hand, on top of payroll:
+    manualPayments: [
+      // { date: '2026-11-15', amount: 5000, note: 'bonus' },
+    ],
+  },
+
+  /* ---------- EKUB (savings group) ---------- */
+  ekub: {
+    name: 'Ekub',
+    contributionAmount: 3000,       // ?? PLACEHOLDER — per round
+    frequency: 'monthly',           // ?? PLACEHOLDER — monthly | weekly
+    totalMembers: 12,               // ?? PLACEHOLDER — determines payout size
+    myPayoutRound: 7,               // ?? PLACEHOLDER — which round you collect
+    startDate: '2026-08-15',        // ?? PLACEHOLDER — round 1 date
+    dayOfMonth: 15,                 // ?? PLACEHOLDER
+    accountId: 'cash',              // ?? PLACEHOLDER
+    // Rounds already paid. Earlier session said #1 and #2 are paid, #3 due —
+    // the DATES below are guesses. Confirm them.
+    contributionsPaid: [
+      { round: 1, date: '2026-08-15' },  // ?? PLACEHOLDER date
+      { round: 2, date: '2026-09-15' },  // ?? PLACEHOLDER date
+    ],
+  },
+
+  /* ---------- RELOCATION PLAN ---------- */
+  relocation: {
+    targetDate: '2027-01-01',       // ?? PLACEHOLDER
+    advanceMonths: 3,               // ?? PLACEHOLDER — months of rent demanded up front
+    newMonthlyRent: 13000,          // ?? PLACEHOLDER
+    deposit: 0,                     // ?? PLACEHOLDER
+    movingCost: 6000,               // ?? PLACEHOLDER
+    // Change in other monthly costs after the move (transport, utilities...)
+    otherMonthlyDelta: 800,         // ?? PLACEHOLDER
+  },
+
+  /* ---------- BUDGETS (monthly caps) ---------- */
+  budgets: {
+    Groceries: 6000,   // ?? PLACEHOLDER
+    Transport: 2200,   // ?? PLACEHOLDER
+    'Eating out': 800, // ?? PLACEHOLDER
+    Airtime: 600,      // ?? PLACEHOLDER
+    Health: 1000,      // ?? PLACEHOLDER
+    Child: 2500,       // ?? PLACEHOLDER
+    Other: 1000,       // ?? PLACEHOLDER
+  },
+
+  /* ---------- TRANSACTIONS ALREADY RECORDED ---------- */
+  // Leave empty on a fresh start; openings above carry the history.
+  transactions: [],
+};
+
+/* What is still a guess. The app shows this list on the Home screen so it
+   can never quietly pretend the numbers are yours. */
+const NEEDS_CONFIRMATION = [
+  'Opening balance + opening date for all 6 accounts (take them all on ONE day)',
+  'Salary: net amount that actually lands, and the day it lands',
+  'Whether the loan repayment is deducted by payroll before you see the money',
+  'Loan: interest rate (0% if company loan), monthly deduction amount, deduction day',
+  'Loan balance 78,557 ETB — still current?',
+  'Every bill amount and due day (rent, utilities, family, child, transport, airtime, church)',
+  'Ekub: contribution amount, number of members, which round is yours, round 1 date',
+  'Ekub: exact dates contributions #1 and #2 were paid, and when #3 is due',
+  'Relocation: target date, advance months, new rent, deposit, moving cost',
+  'Side income: realistic amount and how reliable it actually is',
+  'Category list — confirm or edit',
+  'Monthly budget caps',
+];
+
+/* Results the previous session computed from the REAL data. Once the seed
+   above is real again, these should roughly reproduce. If they do not, the
+   seed is wrong somewhere. */
+const PRIOR_SESSION_RESULTS = {
+  loanPayoffDate: '2027-03-22',
+  relocationVerdict: 'NOT AFFORDABLE',
+  relocationAdvanceShortfall: 5000,
+  relocationMonthlyDeficit: 13000,
+};
+
+
+/* ===== engine.js ===== */
+/* ============================================================
+   BIRR — FINANCIAL ENGINE
+   Pure functions. No DOM, no storage, no side effects.
+   Everything the app claims about your money is computed here.
+   ============================================================ */
+
+/* ---------- date helpers (local time, never UTC-shifted) ---------- */
+function D(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+function iso(d) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function addMonths(d, n) { const x = new Date(d); x.setDate(1); x.setMonth(x.getMonth() + n); return x; }
+function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+function cmp(a, b) { return D(a) < D(b) ? -1 : D(a) > D(b) ? 1 : 0; }
+function monthKey(s) { return s.slice(0, 7); }
+function round2(n) { return Math.round(n * 100) / 100; }
+
+/* Clamp a day-of-month to a month that may be shorter (31 -> 30 -> 28). */
+function dateOnDay(year, monthIdx, dayOfMonth) {
+  return new Date(year, monthIdx, Math.min(dayOfMonth, daysInMonth(year, monthIdx)));
+}
+
+/* ============================================================
+   OCCURRENCES — turn a schedule into concrete dated events
+   ============================================================ */
+function occurrences(schedule, fromISO, toISO) {
+  const out = [];
+  const from = D(fromISO), to = D(toISO);
+  if (schedule.type === 'monthly' || schedule.type === 'irregular') {
+    let cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+    while (cursor <= to) {
+      const d = dateOnDay(cursor.getFullYear(), cursor.getMonth(), schedule.dayOfMonth);
+      if (d >= from && d <= to) out.push(iso(d));
+      cursor = addMonths(cursor, 1);
+    }
+  } else if (schedule.type === 'weekly') {
+    let d = new Date(from);
+    while (d.getDay() !== schedule.dayOfWeek) d = addDays(d, 1);
+    while (d <= to) { out.push(iso(d)); d = addDays(d, 7); }
+  }
+  return out;
+}
+
+/* ============================================================
+   CORE MODEL
+   ============================================================ */
+function makeEngine(seed, state) {
+  state = state || { transactions: [], overrides: {}, paid: {} };
+  const txs = (seed.transactions || []).concat(state.transactions || []);
+  const asOf = seed.meta.asOf;
+  const accountById = {};
+  seed.accounts.forEach(a => { accountById[a.id] = a; });
+
+  /* ---------- balances ---------- */
+  function accountBalance(accountId, onISO) {
+    const acct = accountById[accountId];
+    if (!acct) return 0;
+    const upTo = onISO || asOf;
+    let bal = acct.opening;
+    for (const t of txs) {
+      if (t.accountId !== accountId) continue;
+      if (cmp(t.date, acct.openingDate) < 0) continue;   // before opening: already in the opening figure
+      if (cmp(t.date, upTo) > 0) continue;
+      bal += t.amount;
+    }
+    return round2(bal);
+  }
+
+  function combinedBalance(onISO) {
+    return round2(seed.accounts.reduce((s, a) => s + accountBalance(a.id, onISO), 0));
+  }
+
+  /* ---------- reconciliation: our number vs the bank's number ---------- */
+  function reconcile(accountId, statedBalance, onISO) {
+    const calculated = accountBalance(accountId, onISO);
+    const drift = round2(statedBalance - calculated);
+    return {
+      accountId, calculated, stated: round2(statedBalance), drift,
+      clean: Math.abs(drift) <= seed.policy.driftAlertThreshold,
+    };
+  }
+
+  /* ============================================================
+     LOAN — amortisation with payroll deduction + manual payments
+     ============================================================ */
+  function loanSchedule() {
+    const L = seed.loan;
+    let balance = L.balance;
+    const monthlyRate = (L.annualRate || 0) / 12;
+    const rows = [];
+    let totalInterest = 0, totalPaid = 0;
+    let cursor = D(asOf);
+    const manual = (L.manualPayments || []).slice().sort((a, b) => cmp(a.date, b.date));
+    const manualUsed = new Set();
+    let payoffDate = null;
+
+    for (let i = 0; i < 600 && balance > 0.005; i++) {
+      const monthDate = addMonths(new Date(cursor.getFullYear(), cursor.getMonth(), 1), i);
+      const y = monthDate.getFullYear(), m = monthDate.getMonth();
+
+      // interest for the month, on the balance at month start
+      const interest = round2(balance * monthlyRate);
+      balance = round2(balance + interest);
+      totalInterest = round2(totalInterest + interest);
+
+      // manual payments landing in this month, applied first
+      let monthManual = 0, lastEventDate = null;
+      manual.forEach((p, idx) => {
+        if (manualUsed.has(idx)) return;
+        const pd = D(p.date);
+        if (pd.getFullYear() === y && pd.getMonth() === m && pd >= D(asOf)) {
+          const pay = Math.min(p.amount, balance);
+          balance = round2(balance - pay);
+          monthManual = round2(monthManual + pay);
+          totalPaid = round2(totalPaid + pay);
+          manualUsed.add(idx);
+          lastEventDate = p.date;
+        }
+      });
+
+      // payroll deduction
+      const autoDate = dateOnDay(y, m, L.autoDeductDay);
+      let autoPaid = 0;
+      if (balance > 0.005 && autoDate >= D(asOf)) {
+        autoPaid = Math.min(L.autoDeductAmount, balance);   // never overpay
+        balance = round2(balance - autoPaid);
+        totalPaid = round2(totalPaid + autoPaid);
+        lastEventDate = iso(autoDate);
+      }
+
+      if (autoPaid > 0 || monthManual > 0) {
+        rows.push({
+          month: `${y}-${String(m + 1).padStart(2, '0')}`,
+          interest, manual: monthManual, auto: autoPaid,
+          closing: balance, date: lastEventDate,
+        });
+      }
+      if (balance <= 0.005 && lastEventDate) payoffDate = lastEventDate;
+      if (autoPaid === 0 && monthManual === 0 && balance > 0) break;  // nothing is paying it down
+    }
+
+    return {
+      rows, payoffDate, totalInterest, totalPaid,
+      monthsRemaining: rows.length,
+      startingBalance: L.balance,
+      stalled: payoffDate === null,
+    };
+  }
+
+  /* ============================================================
+     EKUB
+     ============================================================ */
+  function ekubStatus() {
+    const E = seed.ekub;
+    const paid = (E.contributionsPaid || []).slice().sort((a, b) => a.round - b.round);
+    const paidCount = paid.length;
+    const payoutAmount = round2(E.contributionAmount * E.totalMembers);
+
+    // round N falls on the Nth scheduled date from startDate
+    function roundDate(n) {
+      if (E.frequency === 'weekly') return iso(addDays(D(E.startDate), 7 * (n - 1)));
+      const s = D(E.startDate);
+      const m = addMonths(new Date(s.getFullYear(), s.getMonth(), 1), n - 1);
+      return iso(dateOnDay(m.getFullYear(), m.getMonth(), E.dayOfMonth));
+    }
+
+    const nextRound = paidCount + 1;
+    const nextDue = nextRound <= E.totalMembers ? roundDate(nextRound) : null;
+    const payoutDate = roundDate(E.myPayoutRound);
+    const contributedSoFar = round2(E.contributionAmount * paidCount);
+    const contributedByPayout = round2(E.contributionAmount * E.myPayoutRound);
+    const netAtPayout = round2(payoutAmount - contributedByPayout);
+    const totalContribution = round2(E.contributionAmount * E.totalMembers);
+
+    return {
+      paidCount, totalRounds: E.totalMembers, nextRound, nextDue,
+      overdue: nextDue !== null && cmp(nextDue, asOf) < 0,
+      payoutAmount, payoutDate, payoutRound: E.myPayoutRound,
+      contributedSoFar, contributedByPayout, netAtPayout,
+      totalContribution,
+      progress: paidCount / E.totalMembers,
+      alreadyPaidOut: cmp(payoutDate, asOf) < 0,
+    };
+  }
+
+  /* ============================================================
+     COMMITMENTS between two dates
+     ============================================================ */
+  /* Every dated thing you owe, from any source, treated alike so that
+     "mark paid" and "postpone" work the same on a bill, an Ekub round and
+     a manual loan payment. */
+  function billOccurrences(fromISO, toISO) {
+    const raw = [];
+
+    // Recurring bills. Generated over a wider window than asked for, so a
+    // bill postponed INTO the window still shows up.
+    const wideFrom = addDaysISO(fromISO, -45), wideTo = addDaysISO(toISO, 45);
+    for (const b of seed.bills) {
+      for (const date of occurrences(b.schedule, wideFrom, wideTo)) {
+        raw.push({ ...b, date, key: `${b.id}@${date}`, kind: 'bill' });
+      }
+    }
+
+    // Ekub contribution is a commitment too.
+    const E = seed.ekub, es = ekubStatus();
+    if (es.nextDue) {
+      raw.push({
+        id: 'ekub', name: `Ekub round ${es.nextRound}`, amount: E.contributionAmount,
+        accountId: E.accountId, category: 'Ekub', date: es.nextDue,
+        key: `ekub@${es.nextDue}`, kind: 'ekub', essential: true,
+      });
+    }
+
+    // Manual loan payments you have committed to.
+    for (const p of (seed.loan.manualPayments || [])) {
+      raw.push({
+        id: 'loan-manual', name: 'Loan payment (manual)', amount: p.amount,
+        accountId: 'cbe', category: 'Debt', date: p.date,
+        key: `loan@${p.date}`, kind: 'loan', essential: true, note: p.note,
+      });
+    }
+
+    const out = [];
+    for (const item of raw) {
+      if (state.paid[item.key]) continue;                    // already settled
+      const date = state.overrides[item.key] || item.date;   // postponed
+      if (cmp(date, toISO) > 0) continue;
+      if (cmp(date, fromISO) < 0) {
+        // Something dated before the window. A recurring bill is assumed
+        // already dealt with — there is no per-occurrence record to prove
+        // otherwise. Ekub and loan payments DO have explicit paid tracking,
+        // so an overdue one is genuinely still owed — but it only follows
+        // you into a window that starts from today, not into a future month.
+        if (item.kind === 'bill') continue;
+        if (cmp(fromISO, asOf) > 0) continue;
+      }
+      out.push({ ...item, date, overdue: cmp(date, fromISO) < 0 });
+    }
+    return out.sort((a, b) => cmp(a.date, b.date));
+  }
+
+  function incomeOccurrences(fromISO, toISO, shiftLowConfidenceDays) {
+    const out = [];
+    for (const inc of seed.income) {
+      for (const date of occurrences(inc.schedule, fromISO, addDaysISO(toISO, 40))) {
+        let d = date;
+        if (shiftLowConfidenceDays && inc.confidence !== 'high') d = addDaysISO(date, shiftLowConfidenceDays);
+        if (cmp(d, fromISO) < 0 || cmp(d, toISO) > 0) continue;
+        out.push({ ...inc, date: d, kind: 'income' });
+      }
+    }
+    return out.sort((a, b) => cmp(a.date, b.date));
+  }
+
+  function addDaysISO(s, n) { return iso(addDays(D(s), n)); }
+
+  /* ============================================================
+     SAFE TO SPEND
+     What is left after everything committed before the next
+     dependable payday, keeping the buffer untouched.
+     ============================================================ */
+  function safeToSpend(onISO) {
+    const from = onISO || asOf;
+    const horizon = addDaysISO(from, 60);
+    const reliable = incomeOccurrences(from, horizon, 0).filter(i => i.confidence === 'high');
+    const nextPayday = reliable.length ? reliable[0].date : horizon;
+    const committed = billOccurrences(from, nextPayday);
+    const committedTotal = round2(committed.reduce((s, c) => s + c.amount, 0));
+    const balance = combinedBalance(from);
+    const buffer = seed.policy.bufferAmount;
+    const raw = round2(balance - committedTotal - buffer);
+    return {
+      balance, committedTotal, buffer, nextPayday,
+      daysToPayday: Math.round((D(nextPayday) - D(from)) / 86400000),
+      amount: Math.max(0, raw),
+      shortfall: raw < 0 ? round2(-raw) : 0,
+      committed,
+    };
+  }
+
+  /* ============================================================
+     FORECAST — daily, three scenarios
+     ============================================================ */
+  function forecast(days, scenario) {
+    const from = asOf;
+    const to = addDaysISO(from, days);
+    const shift = scenario === 'base' ? 0 : seed.policy.lateIncomeDays;
+    const mult = scenario === 'stress' ? 1 + seed.policy.stressOverrun : 1;
+
+    const inc = incomeOccurrences(from, to, shift);
+    const bills = billOccurrences(from, to);
+
+    const byDate = {};
+    const push = (date, k, v, label) => {
+      byDate[date] = byDate[date] || { in: 0, out: 0, events: [] };
+      byDate[date][k] = round2(byDate[date][k] + v);
+      byDate[date].events.push(label);
+    };
+    inc.forEach(i => push(i.date, 'in', i.amount, `+ ${i.name}`));
+    bills.forEach(b => push(b.date, 'out', round2(b.amount * mult), `− ${b.name}`));
+
+    let balance = combinedBalance(from);
+    const series = [];
+    let lowest = { balance, date: from };
+    let firstNegative = null;
+
+    for (let i = 0; i <= days; i++) {
+      const date = addDaysISO(from, i);
+      const d = byDate[date] || { in: 0, out: 0, events: [] };
+      if (i > 0) balance = round2(balance + d.in - d.out);
+      series.push({ date, in: d.in, out: d.out, balance, events: d.events });
+      if (balance < lowest.balance) lowest = { balance, date };
+      if (balance < 0 && !firstNegative) firstNegative = date;
+    }
+
+    return {
+      scenario, series, lowest, firstNegative,
+      endBalance: series[series.length - 1].balance,
+      startBalance: series[0].balance,
+      totalIn: round2(series.reduce((s, d) => s + d.in, 0)),
+      totalOut: round2(series.reduce((s, d) => s + d.out, 0)),
+    };
+  }
+
+  /* ============================================================
+     RELOCATION AFFORDABILITY
+     ============================================================ */
+  function relocation() {
+    const R = seed.relocation;
+    const advance = round2(R.advanceMonths * R.newMonthlyRent);
+    const upfrontNeed = round2(advance + R.deposit + R.movingCost);
+
+    // Cash on hand at the target date under the honest (late) scenario,
+    // minus the buffer we refuse to spend.
+    const daysOut = Math.max(0, Math.round((D(R.targetDate) - D(asOf)) / 86400000));
+    const f = forecast(daysOut, 'late');
+    const availableAtTarget = round2(f.endBalance - seed.policy.bufferAmount);
+
+    const advanceShortfall = round2(advance - availableAtTarget);
+    const upfrontShortfall = round2(upfrontNeed - availableAtTarget);
+
+    // Monthly picture after the move
+    const currentRent = (seed.bills.find(b => b.category === 'Rent') || { amount: 0 }).amount;
+    const monthlyIncome = round2(seed.income.reduce(
+      (s, i) => s + (i.confidence === 'high' ? i.amount : 0), 0));
+    const monthlyBills = round2(seed.bills.reduce((s, b) => s + b.amount, 0));
+    const ekubMonthly = seed.ekub.frequency === 'monthly' ? seed.ekub.contributionAmount : 0;
+    const newMonthlyOut = round2(monthlyBills - currentRent + R.newMonthlyRent + R.otherMonthlyDelta + ekubMonthly);
+    const monthlyDeficit = round2(newMonthlyOut - monthlyIncome);
+
+    const affordable = upfrontShortfall <= 0 && monthlyDeficit <= 0;
+    let verdict;
+    if (affordable) verdict = 'AFFORDABLE';
+    else if (upfrontShortfall > 0 && monthlyDeficit > 0) verdict = 'NOT AFFORDABLE';
+    else if (upfrontShortfall > 0) verdict = 'NOT AFFORDABLE — upfront cash short';
+    else verdict = 'NOT AFFORDABLE — monthly deficit';
+
+    return {
+      targetDate: R.targetDate, daysOut,
+      advance, upfrontNeed, availableAtTarget,
+      advanceShortfall, upfrontShortfall,
+      monthlyIncome, newMonthlyOut, monthlyDeficit,
+      currentRent, newRent: R.newMonthlyRent,
+      affordable, verdict,
+      // How much more per month you'd need to save to cover the upfront need
+      monthlySavingNeeded: daysOut > 0 && upfrontShortfall > 0
+        ? round2(upfrontShortfall / Math.max(1, daysOut / 30)) : 0,
+    };
+  }
+
+  /* ============================================================
+     BUDGETS & SPENDING
+     ============================================================ */
+  function spendingByCategory(mk) {
+    const out = {};
+    for (const t of txs) {
+      if (t.isTransfer) continue;
+      if (t.amount >= 0) continue;                 // credits are not spending
+      if (monthKey(t.date) !== mk) continue;
+      const c = t.category || 'Other';
+      out[c] = round2((out[c] || 0) + Math.abs(t.amount));
+    }
+    return out;
+  }
+
+  function budgetStatus(mk) {
+    const spent = spendingByCategory(mk);
+    return Object.keys(seed.budgets).map(cat => {
+      const s = spent[cat] || 0, cap = seed.budgets[cat];
+      return {
+        category: cat, spent: s, cap,
+        remaining: round2(cap - s),
+        pct: cap > 0 ? s / cap : 0,
+        over: s > cap,
+      };
+    }).sort((a, b) => b.pct - a.pct);
+  }
+
+  /* ============================================================
+     ALERTS
+     ============================================================ */
+  function alerts() {
+    const out = [];
+    const sts = safeToSpend();
+    const f = forecast(90, 'late');
+    const es = ekubStatus();
+    const ln = loanSchedule();
+
+    if (sts.shortfall > 0)
+      out.push({ level: 'danger', text: `You are ${money(sts.shortfall)} short of the bills due before ${fmtDate(sts.nextPayday)}.` });
+    else if (sts.amount < seed.policy.bufferAmount)
+      out.push({ level: 'warn', text: `Only ${money(sts.amount)} is genuinely free until ${fmtDate(sts.nextPayday)}.` });
+
+    if (f.firstNegative)
+      out.push({ level: 'danger', text: `If income arrives late, you run out of money on ${fmtDate(f.firstNegative)}.` });
+    else if (f.lowest.balance < seed.policy.bufferAmount)
+      out.push({ level: 'warn', text: `Tightest point is ${money(f.lowest.balance)} on ${fmtDate(f.lowest.date)}.` });
+
+    if (es.overdue)
+      out.push({ level: 'warn', text: `Ekub round ${es.nextRound} was due ${fmtDate(es.nextDue)} and is not marked paid.` });
+
+    if (ln.stalled)
+      out.push({ level: 'danger', text: `The loan never clears — the deduction is not reducing the balance. Check the loan figures.` });
+
+    const r = relocation();
+    if (!r.affordable)
+      out.push({ level: 'warn', text: `Relocation on ${fmtDateFull(r.targetDate)}: ${r.verdict}.` });
+
+    return out;
+  }
+
+  return {
+    seed, state, txs, asOf, accountById,
+    accountBalance, combinedBalance, reconcile,
+    loanSchedule, ekubStatus,
+    billOccurrences, incomeOccurrences, addDaysISO,
+    safeToSpend, forecast, relocation,
+    spendingByCategory, budgetStatus, alerts,
+  };
+}
+
+function money(n) {
+  const neg = n < 0;
+  return (neg ? '−' : '') + 'Br ' + Math.abs(Math.round(n)).toLocaleString('en-US');
+}
+
+/* Dates shown to a person are never raw ISO. */
+const _MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const _DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function fmtDate(s) { const d = D(s); return `${_DOW[d.getDay()]} ${d.getDate()} ${_MON[d.getMonth()]}`; }
+function fmtDateFull(s) { const d = D(s); return `${d.getDate()} ${_MON[d.getMonth()]} ${d.getFullYear()}`; }
+
+if (typeof module !== 'undefined') {
+  module.exports = { makeEngine, money, fmtDate, fmtDateFull, occurrences, D, iso, addDays, addMonths, dateOnDay, round2 };
+}
+
+
+/* ===== parser.js ===== */
+/* ============================================================
+   BIRR — BANK MESSAGE PARSER
+   ------------------------------------------------------------
+   WARNING: the per-provider patterns below are reconstructions.
+   The real wording from CBE / Berhan / Dashen / Bunna / telebirr /
+   M-Pesa must be pasted in and the patterns tuned against it.
+   Until then the GENERIC extractor does the work and every result
+   is marked with a confidence score so nothing is silently trusted.
+   ============================================================ */
+
+const AMOUNT = '([0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?)';
+const CCY = '(?:ETB|Br\\.?|Birr)';
+
+function num(s) { return s ? parseFloat(String(s).replace(/[,\s]/g, '')) : null; }
+
+/* Words that tell us which way the money went. */
+const DEBIT_WORDS = /\b(debited|debit|withdrawn|withdrawal|paid|payment of|transferred|sent|purchase|deducted|charged)\b/i;
+const CREDIT_WORDS = /\b(credited|credit|deposited|deposit|received|has received|refund|transferred to your)\b/i;
+
+/* Messages that move money between your own accounts, not spending. */
+const TRANSFER_HINTS = /\b(transfer(?:red)?\s+(?:to|from)\s+(?:your\s+)?(?:own|account)|to your (?:CBE|Dashen|Berhan|Bunna|telebirr)|wallet to bank|bank to wallet|self)\b/i;
+
+const PROVIDERS = [
+  {
+    id: 'telebirr', label: 'telebirr', senders: ['127', 'telebirr', 'ethiotelecom'],
+    hints: /telebirr|ethio\s?telecom|127/i,
+    patterns: [
+      // "You have transferred ETB 100.00 to ABEBE K. ... your current balance is ETB 250.00. transaction number CAB1234567"
+      new RegExp(`transferred\\s+${CCY}\\s*${AMOUNT}\\s+to\\s+([^.,]+)`, 'i'),
+      new RegExp(`received\\s+${CCY}\\s*${AMOUNT}\\s+from\\s+([^.,]+)`, 'i'),
+    ],
+    refPattern: /\b(?:transaction\s+number|trans(?:action)?\s*id|receipt)\s*[:\s]*([A-Z0-9]{6,})/i,
+  },
+  {
+    id: 'CBE', label: 'Commercial Bank of Ethiopia', senders: ['CBE', 'CBEBirr', 'CBE-Birr'],
+    hints: /commercial bank of ethiopia|\bCBE\b/i,
+    patterns: [
+      // "Dear customer your account 1****5678 has been debited with ETB 500.00 ... current balance ETB 1,200.00"
+      new RegExp(`account\\s+([0-9*xX]{4,})\\s+has been\\s+(debited|credited)\\s+with\\s+${CCY}\\s*${AMOUNT}`, 'i'),
+    ],
+    refPattern: /\b(?:ref|reference)\s*[:\s]*([A-Z0-9]{6,})/i,
+  },
+  { id: 'Berhan', label: 'Berhan Bank', senders: ['Berhan', 'BerhanBank'], hints: /berhan/i, patterns: [], refPattern: /\bref\s*[:\s]*([A-Z0-9]{6,})/i },
+  { id: 'Dashen', label: 'Dashen Bank', senders: ['Dashen', 'DashenBank'], hints: /dashen|amole/i, patterns: [], refPattern: /\bref\s*[:\s]*([A-Z0-9]{6,})/i },
+  { id: 'Bunna', label: 'Bunna Bank', senders: ['Bunna', 'BunnaBank'], hints: /bunna/i, patterns: [], refPattern: /\bref\s*[:\s]*([A-Z0-9]{6,})/i },
+  { id: 'M-Pesa', label: 'M-Pesa', senders: ['M-PESA', 'MPESA', 'Safaricom'], hints: /m-?pesa/i, patterns: [], refPattern: /\b([A-Z0-9]{10})\b/ },
+];
+
+/* ---------- balance stated by the bank itself ---------- */
+const BALANCE_PATTERNS = [
+  new RegExp(`(?:current|available|new|your)?\\s*balance\\s*(?:is|of|:)?\\s*${CCY}?\\s*${AMOUNT}`, 'i'),
+  new RegExp(`balance\\s*[:\\s]\\s*${CCY}\\s*${AMOUNT}`, 'i'),
+];
+
+/* ---------- the main amount, when no provider pattern matched ---------- */
+const AMOUNT_PATTERNS = [
+  new RegExp(`${CCY}\\s*${AMOUNT}`, 'i'),
+  new RegExp(`${AMOUNT}\\s*${CCY}`, 'i'),
+];
+
+const COUNTERPARTY_PATTERNS = [
+  /\b(?:to|from)\s+([A-Z][A-Za-z.\s]{2,30}?)(?=\s*(?:on|at|\.|,|$))/,
+  /\b(?:at|merchant)\s+([A-Z][A-Za-z0-9.\s]{2,30}?)(?=\s*(?:on|\.|,|$))/,
+];
+
+function detectProvider(sender, body) {
+  const s = (sender || '').trim();
+  for (const p of PROVIDERS) {
+    if (p.senders.some(x => x.toLowerCase() === s.toLowerCase())) return p;
+  }
+  for (const p of PROVIDERS) {
+    if (p.hints.test(body)) return p;
+  }
+  return null;
+}
+
+/* ============================================================
+   parseMessage(sender, body, accounts)
+   Returns a candidate transaction with a confidence score and a
+   list of what it could NOT work out, so the UI can ask.
+   ============================================================ */
+function parseMessage(sender, body, accounts) {
+  const text = String(body || '').replace(/\s+/g, ' ').trim();
+  const missing = [];
+  let confidence = 0;
+
+  const provider = detectProvider(sender, text);
+  if (provider) confidence += 0.3; else missing.push('provider');
+
+  /* direction */
+  const isDebit = DEBIT_WORDS.test(text);
+  const isCredit = CREDIT_WORDS.test(text);
+  let direction = null;
+  if (isDebit && !isCredit) { direction = 'debit'; confidence += 0.25; }
+  else if (isCredit && !isDebit) { direction = 'credit'; confidence += 0.25; }
+  else if (isDebit && isCredit) {
+    // both present — trust whichever appears first
+    direction = text.search(DEBIT_WORDS) < text.search(CREDIT_WORDS) ? 'debit' : 'credit';
+    confidence += 0.1;
+    missing.push('direction (ambiguous wording)');
+  } else missing.push('direction');
+
+  /* amount + counterparty via provider pattern first */
+  let amount = null, counterparty = null, accountDigits = null;
+  if (provider) {
+    for (const re of provider.patterns) {
+      const m = text.match(re);
+      if (!m) continue;
+      const groups = m.slice(1);
+      // find the first group that parses as a number
+      for (const g of groups) {
+        const n = num(g);
+        if (n !== null && !isNaN(n) && /[0-9]/.test(g) && g.length < 20 && amount === null && !/^[0-9*xX]{4,}$/.test(g.trim())) {
+          amount = n;
+        } else if (/^[0-9*xX]{4,}$/.test(String(g).trim()) && !accountDigits) {
+          accountDigits = String(g).trim();
+        } else if (/debited|credited/i.test(g)) {
+          direction = /credited/i.test(g) ? 'credit' : 'debit';
+        } else if (!counterparty && /[A-Za-z]{3}/.test(g)) {
+          counterparty = String(g).trim();
+        }
+      }
+      if (amount !== null) { confidence += 0.2; break; }
+    }
+  }
+
+  /* generic amount fallback — exclude the balance figure */
+  let statedBalance = null;
+  for (const re of BALANCE_PATTERNS) {
+    const m = text.match(re);
+    if (m) { statedBalance = num(m[1]); confidence += 0.15; break; }
+  }
+  if (statedBalance === null) missing.push('stated balance');
+
+  if (amount === null) {
+    const all = [];
+    const re = new RegExp(`${CCY}\\s*${AMOUNT}`, 'gi');
+    let m;
+    while ((m = re.exec(text)) !== null) all.push(num(m[1]));
+    const candidates = all.filter(a => a !== statedBalance);
+    if (candidates.length) { amount = candidates[0]; confidence += 0.15; }
+    else if (all.length) { amount = all[0]; confidence += 0.05; }
+    else {
+      for (const p of AMOUNT_PATTERNS) {
+        const mm = text.match(p);
+        if (mm) { amount = num(mm[1]); confidence += 0.05; break; }
+      }
+    }
+  }
+  if (amount === null) missing.push('amount');
+
+  if (!accountDigits) {
+    const m = text.match(/\b([0-9]?[*x]{2,}[0-9]{3,}|[0-9]{4,}[*x]{2,})\b/i);
+    if (m) accountDigits = m[1];
+  }
+
+  if (!counterparty) {
+    for (const p of COUNTERPARTY_PATTERNS) {
+      const m = text.match(p);
+      if (m) { counterparty = m[1].trim(); confidence += 0.05; break; }
+    }
+  }
+
+  /* which of my accounts is this? */
+  let accountId = null;
+  if (provider && accounts) {
+    const match = accounts.find(a =>
+      a.provider === provider.id ||
+      (a.senderIds || []).some(s => s.toLowerCase() === String(sender || '').toLowerCase()));
+    if (match) { accountId = match.id; confidence += 0.1; }
+  }
+  if (!accountId) missing.push('which account');
+
+  const looksLikeTransfer = TRANSFER_HINTS.test(text);
+
+  let ref = null;
+  if (provider && provider.refPattern) {
+    const m = text.match(provider.refPattern);
+    if (m) ref = m[1];
+  }
+
+  return {
+    raw: body, sender: sender || null,
+    provider: provider ? provider.id : null,
+    providerLabel: provider ? provider.label : 'Unknown',
+    direction,
+    amount,
+    signedAmount: amount === null || !direction ? null : (direction === 'debit' ? -amount : amount),
+    statedBalance,
+    counterparty,
+    accountDigits,
+    accountId,
+    ref,
+    looksLikeTransfer,
+    confidence: Math.min(1, Math.round(confidence * 100) / 100),
+    missing,
+    needsReview: confidence < 0.7 || missing.length > 0,
+  };
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { parseMessage, PROVIDERS, detectProvider };
+}
+
+
+/* ===== tests.js ===== */
+/* ============================================================
+   BIRR — SELF-VALIDATION
+   The engine checks itself. If any of these fail, the numbers on
+   the screen are not to be trusted.
+   Run in Node:  node tests.js
+   ============================================================ */
+
+function runTests(deps) {
+  const { makeEngine, parseMessage, SEED } = deps;
+  const results = [];
+  let n = 0;
+
+  function check(name, fn) {
+    n++;
+    try {
+      const r = fn();
+      if (r === true || r === undefined) results.push({ n, name, pass: true });
+      else results.push({ n, name, pass: false, detail: String(r) });
+    } catch (e) {
+      results.push({ n, name, pass: false, detail: e.message });
+    }
+  }
+  const near = (a, b, tol) => Math.abs(a - b) <= (tol === undefined ? 0.02 : tol);
+
+  const E = makeEngine(SEED, { transactions: [], overrides: {}, paid: {} });
+
+  /* ---------- balances ---------- */
+  check('Account balance = opening + its transactions', () => {
+    const a = SEED.accounts[0];
+    const sum = E.txs.filter(t => t.accountId === a.id && t.date >= a.openingDate && t.date <= E.asOf)
+      .reduce((s, t) => s + t.amount, 0);
+    return near(E.accountBalance(a.id), a.opening + sum) || `got ${E.accountBalance(a.id)}`;
+  });
+
+  check('Combined balance = sum of all account balances', () => {
+    const sum = SEED.accounts.reduce((s, a) => s + E.accountBalance(a.id), 0);
+    return near(E.combinedBalance(), sum) || `${E.combinedBalance()} vs ${sum}`;
+  });
+
+  check('A transfer leaves the combined balance unchanged', () => {
+    const before = E.combinedBalance();
+    const E2 = makeEngine(SEED, {
+      transactions: [
+        { id: 'tA', date: E.asOf, accountId: 'cbe', amount: -1000, isTransfer: true, transferGroupId: 'g1' },
+        { id: 'tB', date: E.asOf, accountId: 'telebirr', amount: 1000, isTransfer: true, transferGroupId: 'g1' },
+      ], overrides: {}, paid: {},
+    });
+    return near(E2.combinedBalance(), before) || `${E2.combinedBalance()} vs ${before}`;
+  });
+
+  check('A transfer DOES change the two account balances', () => {
+    const b0 = E.accountBalance('cbe');
+    const E2 = makeEngine(SEED, {
+      transactions: [
+        { id: 'tA', date: E.asOf, accountId: 'cbe', amount: -1000, isTransfer: true, transferGroupId: 'g1' },
+        { id: 'tB', date: E.asOf, accountId: 'telebirr', amount: 1000, isTransfer: true, transferGroupId: 'g1' },
+      ], overrides: {}, paid: {},
+    });
+    return near(E2.accountBalance('cbe'), b0 - 1000) || `cbe moved to ${E2.accountBalance('cbe')} from ${b0}`;
+  });
+
+  check('Transactions dated before an account opening are not double counted', () => {
+    const a = SEED.accounts[0];
+    const E2 = makeEngine(SEED, {
+      transactions: [{ id: 'old', date: '2000-01-01', accountId: a.id, amount: -5000 }],
+      overrides: {}, paid: {},
+    });
+    return near(E2.accountBalance(a.id), E.accountBalance(a.id)) || 'pre-opening transaction leaked in';
+  });
+
+  /* ---------- safe to spend ---------- */
+  check('Safe-to-spend never exceeds the combined balance', () => {
+    const s = E.safeToSpend();
+    return s.amount <= s.balance + 0.01 || `${s.amount} > ${s.balance}`;
+  });
+
+  check('Safe-to-spend is never negative (it reports a shortfall instead)', () => {
+    const s = E.safeToSpend();
+    return s.amount >= 0 || `got ${s.amount}`;
+  });
+
+  check('Safe-to-spend = balance − committed − buffer, when positive', () => {
+    const s = E.safeToSpend();
+    if (s.shortfall > 0) return s.amount === 0 || 'shortfall should zero the figure';
+    return near(s.amount, s.balance - s.committedTotal - s.buffer) || `${s.amount}`;
+  });
+
+  check('Safe-to-spend subtracts every bill due before the next payday', () => {
+    const s = E.safeToSpend();
+    const late = s.committed.filter(c => c.date > s.nextPayday);
+    return late.length === 0 || `${late.length} commitments counted past payday`;
+  });
+
+  check('Safe-to-spend keeps the buffer out of reach', () => {
+    const s = E.safeToSpend();
+    if (s.shortfall > 0) return true;
+    return s.balance - s.amount >= s.buffer - 0.01 || 'buffer was spendable';
+  });
+
+  /* ---------- loan ---------- */
+  check('Loan balance falls monotonically', () => {
+    const L = E.loanSchedule();
+    for (let i = 1; i < L.rows.length; i++) {
+      if (L.rows[i].closing > L.rows[i - 1].closing + 0.01) return `rose at row ${i}`;
+    }
+    return true;
+  });
+
+  check('Loan reaches zero (the deduction actually clears it)', () => {
+    const L = E.loanSchedule();
+    if (L.stalled) return 'loan never clears — check rate vs deduction';
+    return near(L.rows[L.rows.length - 1].closing, 0) || `ends at ${L.rows[L.rows.length - 1].closing}`;
+  });
+
+  check('Loan payoff date is in the future', () => {
+    const L = E.loanSchedule();
+    return (L.payoffDate && L.payoffDate >= E.asOf) || `payoff ${L.payoffDate}`;
+  });
+
+  check('Final loan payment does not overpay', () => {
+    const L = E.loanSchedule();
+    const last = L.rows[L.rows.length - 1];
+    return last.closing >= -0.01 || `overpaid to ${last.closing}`;
+  });
+
+  check('Loan total paid = principal + interest', () => {
+    const L = E.loanSchedule();
+    return near(L.totalPaid, L.startingBalance + L.totalInterest, 1)
+      || `paid ${L.totalPaid} vs ${L.startingBalance}+${L.totalInterest}`;
+  });
+
+  check('Loan interest is never negative', () => {
+    const L = E.loanSchedule();
+    return L.totalInterest >= 0 || `${L.totalInterest}`;
+  });
+
+  /* ---------- ekub ---------- */
+  check('Ekub contributions paid never exceed the number of rounds', () => {
+    const k = E.ekubStatus();
+    return k.paidCount <= k.totalRounds || `${k.paidCount}/${k.totalRounds}`;
+  });
+
+  check('Ekub payout = contribution × members', () => {
+    const k = E.ekubStatus();
+    return near(k.payoutAmount, SEED.ekub.contributionAmount * SEED.ekub.totalMembers) || `${k.payoutAmount}`;
+  });
+
+  check('Ekub net at payout = payout − everything contributed by then', () => {
+    const k = E.ekubStatus();
+    return near(k.netAtPayout, k.payoutAmount - k.contributedByPayout) || `${k.netAtPayout}`;
+  });
+
+  check('Ekub is zero-sum over a full cycle (you get back what you put in)', () => {
+    const k = E.ekubStatus();
+    return near(k.payoutAmount, k.totalContribution) || `payout ${k.payoutAmount} vs contributed ${k.totalContribution}`;
+  });
+
+  check('Ekub next due round follows the rounds already paid', () => {
+    const k = E.ekubStatus();
+    return k.nextRound === k.paidCount + 1 || `next ${k.nextRound} after ${k.paidCount}`;
+  });
+
+  /* ---------- forecast ---------- */
+  check('Forecast day 0 equals today\'s combined balance', () => {
+    const f = E.forecast(90, 'base');
+    return near(f.series[0].balance, E.combinedBalance()) || `${f.series[0].balance}`;
+  });
+
+  check('Forecast is continuous: each day = previous + in − out', () => {
+    const f = E.forecast(90, 'base');
+    for (let i = 1; i < f.series.length; i++) {
+      const p = f.series[i - 1], c = f.series[i];
+      if (!near(c.balance, p.balance + c.in - c.out, 0.05)) return `break at ${c.date}`;
+    }
+    return true;
+  });
+
+  check('Forecast covers exactly the days requested', () => {
+    const f = E.forecast(90, 'base');
+    return f.series.length === 91 || `${f.series.length} rows`;
+  });
+
+  check('The late scenario is never rosier than the base scenario', () => {
+    const b = E.forecast(90, 'base'), l = E.forecast(90, 'late');
+    return l.lowest.balance <= b.lowest.balance + 0.01
+      || `late low ${l.lowest.balance} > base low ${b.lowest.balance}`;
+  });
+
+  check('The stress scenario is never rosier than the late scenario', () => {
+    const l = E.forecast(90, 'late'), s = E.forecast(90, 'stress');
+    return s.lowest.balance <= l.lowest.balance + 0.01
+      || `stress low ${s.lowest.balance} > late low ${l.lowest.balance}`;
+  });
+
+  check('Forecast low point is actually the minimum of the series', () => {
+    const f = E.forecast(90, 'late');
+    const min = Math.min(...f.series.map(d => d.balance));
+    return near(f.lowest.balance, min) || `${f.lowest.balance} vs ${min}`;
+  });
+
+  /* ---------- relocation ---------- */
+  check('Relocation advance = months × new rent', () => {
+    const r = E.relocation();
+    return near(r.advance, SEED.relocation.advanceMonths * SEED.relocation.newMonthlyRent) || `${r.advance}`;
+  });
+
+  check('Relocation upfront need = advance + deposit + moving', () => {
+    const r = E.relocation();
+    return near(r.upfrontNeed, r.advance + SEED.relocation.deposit + SEED.relocation.movingCost) || `${r.upfrontNeed}`;
+  });
+
+  check('Relocation verdict agrees with the shortfall and deficit signs', () => {
+    const r = E.relocation();
+    if (r.affordable) return (r.upfrontShortfall <= 0 && r.monthlyDeficit <= 0) || 'called affordable while short';
+    return (r.upfrontShortfall > 0 || r.monthlyDeficit > 0) || 'called unaffordable with no shortfall';
+  });
+
+  check('Relocation upfront shortfall ≥ advance shortfall', () => {
+    const r = E.relocation();
+    return r.upfrontShortfall >= r.advanceShortfall - 0.01 || `${r.upfrontShortfall} < ${r.advanceShortfall}`;
+  });
+
+  /* ---------- reconciliation ---------- */
+  check('Reconciliation drift = stated − calculated', () => {
+    const calc = E.accountBalance('cbe');
+    const r = E.reconcile('cbe', calc + 250, E.asOf);
+    return near(r.drift, 250) || `${r.drift}`;
+  });
+
+  check('Matching balances reconcile clean', () => {
+    const calc = E.accountBalance('cbe');
+    const r = E.reconcile('cbe', calc, E.asOf);
+    return (r.clean && near(r.drift, 0)) || `drift ${r.drift}`;
+  });
+
+  /* ---------- budgets ---------- */
+  check('Spending totals are never negative', () => {
+    const E2 = makeEngine(SEED, {
+      transactions: [{ id: 'x', date: SEED.meta.asOf, accountId: 'cash', amount: -300, category: 'Groceries' }],
+      overrides: {}, paid: {},
+    });
+    const b = E2.budgetStatus(SEED.meta.asOf.slice(0, 7));
+    return b.every(x => x.spent >= 0) || 'negative spend';
+  });
+
+  check('Credits do not count as spending', () => {
+    const E2 = makeEngine(SEED, {
+      transactions: [{ id: 'y', date: SEED.meta.asOf, accountId: 'cash', amount: 5000, category: 'Groceries' }],
+      overrides: {}, paid: {},
+    });
+    const g = E2.budgetStatus(SEED.meta.asOf.slice(0, 7)).find(x => x.category === 'Groceries');
+    return g.spent === 0 || `credit counted as ${g.spent}`;
+  });
+
+  check('Transfers do not count as spending', () => {
+    const E2 = makeEngine(SEED, {
+      transactions: [{ id: 'z', date: SEED.meta.asOf, accountId: 'cash', amount: -2000, category: 'Groceries', isTransfer: true }],
+      overrides: {}, paid: {},
+    });
+    const g = E2.budgetStatus(SEED.meta.asOf.slice(0, 7)).find(x => x.category === 'Groceries');
+    return g.spent === 0 || `transfer counted as ${g.spent}`;
+  });
+
+  check('Budget over-cap flag matches spent vs cap', () => {
+    const E2 = makeEngine(SEED, {
+      transactions: [{ id: 'q', date: SEED.meta.asOf, accountId: 'cash', amount: -(SEED.budgets.Groceries + 1), category: 'Groceries' }],
+      overrides: {}, paid: {},
+    });
+    const g = E2.budgetStatus(SEED.meta.asOf.slice(0, 7)).find(x => x.category === 'Groceries');
+    return g.over === true || 'over-cap not flagged';
+  });
+
+  /* ---------- marking paid / postponing ---------- */
+  check('Marking a bill paid removes it from upcoming commitments', () => {
+    const horizon = E.addDaysISO(E.asOf, 60);
+    const before = E.billOccurrences(E.asOf, horizon);
+    if (!before.length) return true;
+    const target = before[0];
+    const E2 = makeEngine(SEED, { transactions: [], overrides: {}, paid: { [target.key]: true } });
+    const after = E2.billOccurrences(E.asOf, horizon);
+    return after.every(b => b.key !== target.key) || 'still listed after paying';
+  });
+
+  check('Postponing a bill moves its date and nothing else', () => {
+    const horizon = E.addDaysISO(E.asOf, 90);
+    const before = E.billOccurrences(E.asOf, horizon);
+    if (!before.length) return true;
+    const t = before[0];
+    const newDate = E.addDaysISO(t.date, 5);
+    const E2 = makeEngine(SEED, { transactions: [], overrides: { [t.key]: newDate }, paid: {} });
+    const moved = E2.billOccurrences(E.asOf, horizon).find(b => b.key === t.key);
+    return (moved && moved.date === newDate && moved.amount === t.amount) || 'postpone failed';
+  });
+
+  /* ---------- schedule edge cases ---------- */
+  check('Day-31 bills fall on the last day of short months', () => {
+    const seed31 = JSON.parse(JSON.stringify(SEED));
+    seed31.bills = [{ id: 'b31', name: 'Day 31', amount: 100, accountId: 'cash', category: 'Other', schedule: { type: 'monthly', dayOfMonth: 31 }, essential: false }];
+    const E2 = makeEngine(seed31, { transactions: [], overrides: {}, paid: {} });
+    const occ = E2.billOccurrences('2027-02-01', '2027-02-28');
+    return (occ.length === 1 && occ[0].date === '2027-02-28') || `got ${occ.map(o => o.date).join(',')}`;
+  });
+
+  /* ---------- parser ---------- */
+  check('Parser reads a CBE-style debit with its stated balance', () => {
+    const p = parseMessage('CBE', 'Dear customer your account 1****5678 has been debited with ETB 500.00 on 13/10/2026. Your current balance is ETB 1,200.00', SEED.accounts);
+    return (p.amount === 500 && p.direction === 'debit' && p.statedBalance === 1200 && p.signedAmount === -500)
+      || JSON.stringify({ a: p.amount, d: p.direction, b: p.statedBalance });
+  });
+
+  check('Parser reads a telebirr transfer out', () => {
+    const p = parseMessage('127', 'You have transferred ETB 250.00 to ABEBE KEBEDE. Your current balance is ETB 80.50. transaction number CAB1234567', SEED.accounts);
+    return (p.amount === 250 && p.direction === 'debit' && p.statedBalance === 80.5)
+      || JSON.stringify({ a: p.amount, d: p.direction, b: p.statedBalance });
+  });
+
+  check('Parser reads a credit as positive', () => {
+    const p = parseMessage('CBE', 'Your account 1****5678 has been credited with ETB 28,000.00. Current balance is ETB 29,200.00', SEED.accounts);
+    return (p.signedAmount === 28000 && p.direction === 'credit') || JSON.stringify({ s: p.signedAmount, d: p.direction });
+  });
+
+  check('Parser never mistakes the stated balance for the amount', () => {
+    const p = parseMessage('CBE', 'Your account 1****5678 has been debited with ETB 100.00. Current balance is ETB 9,999.00', SEED.accounts);
+    return p.amount === 100 || `picked ${p.amount}`;
+  });
+
+  check('Parser maps the sender to one of my accounts', () => {
+    const p = parseMessage('127', 'You have transferred ETB 10.00 to X. Your balance is ETB 5.00', SEED.accounts);
+    return p.accountId === 'telebirr' || `mapped to ${p.accountId}`;
+  });
+
+  check('Parser flags an unknown sender for review instead of guessing', () => {
+    const p = parseMessage('UNKNOWN99', 'Some random promotional text with no money in it', SEED.accounts);
+    return p.needsReview === true || 'accepted an unparseable message';
+  });
+
+  check('Parser flags ambiguous direction rather than picking silently', () => {
+    const p = parseMessage('CBE', 'Your account was credited and then debited with ETB 50.00', SEED.accounts);
+    return (p.confidence < 0.7 || p.missing.length > 0) || 'ambiguous message passed as confident';
+  });
+
+  check('Parser spots a self-transfer so it is not booked as spending', () => {
+    const p = parseMessage('127', 'You have transferred ETB 1,000.00 to your CBE account. Your balance is ETB 20.00', SEED.accounts);
+    return p.looksLikeTransfer === true || 'self-transfer not detected';
+  });
+
+  check('Parsed amounts survive thousands separators', () => {
+    const p = parseMessage('CBE', 'debited with ETB 1,234,567.89. Balance is ETB 10.00', SEED.accounts);
+    return p.amount === 1234567.89 || `got ${p.amount}`;
+  });
+
+  /* ---------- modelling subtlety ---------- */
+  check('Payroll loan deduction is not double counted as a cash outflow', () => {
+    const salary = SEED.income.find(i => i.netOfLoanDeduction);
+    if (!salary) return 'no income marked netOfLoanDeduction — confirm with the user';
+    const f = E.forecast(90, 'base');
+    const loanAsOutflow = f.series.some(d => d.events.some(e => /loan/i.test(e) && /^−/.test(e)))
+      && SEED.loan.autoDeductAmount > 0;
+    const manualExists = (SEED.loan.manualPayments || []).length > 0;
+    return (!loanAsOutflow || manualExists) || 'payroll deduction counted twice';
+  });
+
+  check('Alerts are generated without throwing', () => {
+    const a = E.alerts();
+    return Array.isArray(a) || 'alerts failed';
+  });
+
+  const passed = results.filter(r => r.pass).length;
+  return { results, passed, total: results.length, allPass: passed === results.length };
+}
+
+if (typeof module !== 'undefined') module.exports = { runTests };
+
+
+/* ===== ui.js ===== */
+/* ============================================================
+   BIRR — UI (vanilla, no dependencies)
+   ============================================================ */
+
+const STORE_KEY = 'birr.state.v1';
+
+function loadState() {
+  const empty = { transactions: [], overrides: {}, paid: {}, inbox: [], recon: {} };
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return empty;
+    return Object.assign(empty, JSON.parse(raw));
+  } catch (e) { return empty; }
+}
+function saveState() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(STATE)); } catch (e) { /* private mode */ }
+}
+
+let STATE = loadState();
+let E = makeEngine(SEED, STATE);
+let TAB = 'home';
+
+function refresh() { E = makeEngine(SEED, STATE); saveState(); render(); }
+
+/* ---------- small helpers ---------- */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const MON = _MON;
+const pretty = fmtDate;
+const prettyFull = fmtDateFull;
+function relDays(isoStr) {
+  const n = Math.round((D(isoStr) - D(E.asOf)) / 86400000);
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n < 0) return `${-n} day${-n === 1 ? '' : 's'} overdue`;
+  return `in ${n} days`;
+}
+function uid() { return 'x' + Math.random().toString(36).slice(2, 10); }
+
+const TABS = [
+  ['home', 'Home'], ['accounts', 'Accounts'], ['calendar', 'Calendar'],
+  ['loan', 'Loan'], ['ekub', 'Ekub'], ['relocation', 'Relocation'],
+  ['budget', 'Budget'], ['forecast', 'Forecast'], ['inbox', 'Inbox'],
+  ['checks', 'Checks'],
+];
+
+/* ============================================================
+   HOME
+   ============================================================ */
+function viewHome() {
+  const bal = E.combinedBalance();
+  const s = E.safeToSpend();
+  const alerts = E.alerts();
+  const ln = E.loanSchedule();
+  const k = E.ekubStatus();
+
+  let h = '';
+
+  h += `<div class="tiles" style="margin-top:14px">
+    <div class="tile">
+      <div class="label">Everything you have</div>
+      <div class="hero">${money(bal)}</div>
+      <div class="note">Across ${SEED.accounts.length} accounts, as of ${prettyFull(E.asOf)}</div>
+    </div>
+    <div class="tile">
+      <div class="label">Safe to spend</div>
+      <div class="hero" style="color:${s.shortfall > 0 ? 'var(--critical)' : 'var(--good-text)'}">${money(s.amount)}</div>
+      <div class="note">${s.shortfall > 0
+      ? `You are <strong>${money(s.shortfall)} short</strong> of what is due before ${pretty(s.nextPayday)}.`
+      : `After ${money(s.committedTotal)} of bills due before ${pretty(s.nextPayday)} (${relDays(s.nextPayday)}) and a ${money(s.buffer)} buffer.`}</div>
+    </div>
+  </div>`;
+
+  if (alerts.length) {
+    h += `<div class="card"><h2>What needs attention</h2>`;
+    for (const a of alerts) {
+      const ico = a.level === 'danger' ? '!' : a.level === 'warn' ? '△' : '✓';
+      h += `<div class="alert ${a.level}"><span class="ico">${ico}</span><span>${esc(a.text)}</span></div>`;
+    }
+    h += `</div>`;
+  } else {
+    h += `<div class="card"><h2>What needs attention</h2>
+      <div class="alert good"><span class="ico">✓</span><span>Nothing pressing. The next 90 days stay above your buffer even if income is late.</span></div></div>`;
+  }
+
+  h += `<div class="tiles" style="margin-top:14px">
+    <div class="tile">
+      <div class="label">Company loan</div>
+      <div class="value sm">${money(ln.startingBalance)}</div>
+      <div class="note">${ln.stalled
+      ? '<span class="pill bad">never clears</span> check the figures'
+      : `Clear by <strong>${prettyFull(ln.payoffDate)}</strong> · ${ln.monthsRemaining} more payment${ln.monthsRemaining === 1 ? '' : 's'}`}</div>
+    </div>
+    <div class="tile">
+      <div class="label">Ekub</div>
+      <div class="value sm">${k.paidCount} of ${k.totalRounds} paid</div>
+      <div class="note">${k.nextDue
+      ? `Round ${k.nextRound} ${k.overdue ? '<strong style="color:var(--critical)">was due</strong>' : 'due'} ${pretty(k.nextDue)} · payout ${money(k.payoutAmount)} on ${prettyFull(k.payoutDate)}`
+      : 'Cycle complete'}</div>
+    </div>
+  </div>`;
+
+  // The honesty banner — never let placeholder numbers look real.
+  h += `<div class="seedwarn">
+    <h3>⚠ These numbers are not yours yet</h3>
+    <div style="font-size:13.5px;color:var(--text-secondary)">
+      The previous session's data was lost when its container was reclaimed. The figures above are
+      computed correctly, but from <strong>placeholder</strong> inputs. Edit <code>seed.js</code> to make them real.
+      Still needed:
+    </div>
+    <ul>${NEEDS_CONFIRMATION.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    <div style="font-size:12.5px;color:var(--text-muted);margin-top:10px">
+      For reference, the real data previously produced: loan payoff
+      <strong>${PRIOR_SESSION_RESULTS.loanPayoffDate}</strong>, relocation
+      <strong>${PRIOR_SESSION_RESULTS.relocationVerdict}</strong>
+      (${money(PRIOR_SESSION_RESULTS.relocationAdvanceShortfall)} short on the advance,
+      ${money(PRIOR_SESSION_RESULTS.relocationMonthlyDeficit)} monthly deficit).
+      Once the seed is real again, those should roughly reappear.
+    </div>
+  </div>`;
+
+  return h;
+}
+
+/* ============================================================
+   ACCOUNTS
+   ============================================================ */
+function viewAccounts() {
+  let h = `<div class="card"><h2>Accounts <span class="sub">— calculated balance vs what the bank last told you</span></h2>
+  <div class="wrapper-scroll"><table><thead><tr>
+    <th>Account</th><th class="num">Birr says</th><th class="num">Bank says</th><th class="num">Drift</th><th></th>
+  </tr></thead><tbody>`;
+
+  for (const a of SEED.accounts) {
+    const calc = E.accountBalance(a.id);
+    const stated = STATE.recon[a.id];
+    const r = stated != null ? E.reconcile(a.id, stated, E.asOf) : null;
+    h += `<tr>
+      <td><strong>${esc(a.name)}</strong><br><span class="muted" style="font-size:11.5px">${esc(a.type)}${a.senderIds && a.senderIds.length ? ' · ' + esc(a.senderIds.join(', ')) : ''}</span></td>
+      <td class="num">${money(calc)}</td>
+      <td class="num"><input type="number" step="0.01" style="max-width:120px;text-align:right"
+            value="${stated != null ? stated : ''}" placeholder="—"
+            oninput="setRecon('${a.id}', this.value)"></td>
+      <td class="num">${r ? `<span class="${r.drift === 0 ? '' : r.drift > 0 ? 'pos' : 'neg'}">${money(r.drift)}</span>` : '<span class="muted">—</span>'}</td>
+      <td>${r ? (r.clean
+        ? '<span class="pill ok">matches</span>'
+        : `<span class="pill bad">off by ${money(Math.abs(r.drift))}</span>`) : ''}</td>
+    </tr>`;
+  }
+  h += `</tbody></table></div>
+    <div class="muted" style="font-size:12.5px;margin-top:10px">
+      Type in the balance from your latest bank SMS. A drift means a transaction is
+      missing, duplicated, or a fee was charged that Birr has not seen.
+    </div></div>`;
+
+  // recent transactions
+  const recent = E.txs.slice().sort((a, b) => cmp(b.date, a.date)).slice(0, 40);
+  h += `<div class="card"><h2>Recorded transactions <span class="sub">— ${E.txs.length} total</span></h2>`;
+  if (!recent.length) {
+    h += `<div class="empty">Nothing recorded yet. Paste a bank message in the Inbox tab, or mark a bill paid in the Calendar.</div>`;
+  } else {
+    h += `<div class="wrapper-scroll"><table><thead><tr>
+      <th>Date</th><th>Account</th><th>What</th><th>Category</th><th class="num">Amount</th><th></th>
+    </tr></thead><tbody>`;
+    for (const t of recent) {
+      const acct = E.accountById[t.accountId];
+      h += `<tr>
+        <td style="white-space:nowrap">${pretty(t.date)}</td>
+        <td>${esc(acct ? acct.name : t.accountId)}</td>
+        <td>${esc(t.note || '—')}${t.isTransfer ? ' <span class="pill">transfer</span>' : ''}</td>
+        <td>${esc(t.category || '—')}</td>
+        <td class="num ${t.amount < 0 ? 'neg' : 'pos'}">${money(t.amount)}</td>
+        <td><button class="btn ghost" onclick="delTx('${t.id}')">delete</button></td>
+      </tr>`;
+    }
+    h += `</tbody></table></div>`;
+  }
+  h += `</div>`;
+  return h;
+}
+
+/* ============================================================
+   CALENDAR
+   ============================================================ */
+function viewCalendar() {
+  const to = E.addDaysISO(E.asOf, 60);
+  const items = E.billOccurrences(E.asOf, to);
+  const income = E.incomeOccurrences(E.asOf, to, 0);
+
+  const all = items.map(i => ({ ...i, flow: 'out' }))
+    .concat(income.map(i => ({ ...i, flow: 'in' })))
+    .sort((a, b) => cmp(a.date, b.date));
+
+  let h = `<div class="card"><h2>Next 60 days <span class="sub">— what goes out, what comes in</span></h2>`;
+  if (!all.length) { h += `<div class="empty">Nothing scheduled.</div></div>`; return h; }
+
+  let lastDate = null;
+  for (const it of all) {
+    if (it.date !== lastDate) {
+      if (lastDate !== null) h += `</div>`;
+      h += `<div class="daygroup"><div class="dayhead">${pretty(it.date)} · ${relDays(it.date)}${it.overdue ? ' · <span style="color:var(--critical)">overdue</span>' : ''}</div>`;
+      lastDate = it.date;
+    }
+    if (it.flow === 'in') {
+      h += `<div class="item">
+        <div class="nm">${esc(it.name)}<small>into ${esc((E.accountById[it.accountId] || {}).name || it.accountId)} · ${esc(it.confidence)} confidence</small></div>
+        <div class="amt pos">+${money(it.amount)}</div>
+      </div>`;
+    } else {
+      h += `<div class="item">
+        <div class="nm">${esc(it.name)}<small>from ${esc((E.accountById[it.accountId] || {}).name || it.accountId)} · ${esc(it.category)}${it.essential ? ' · essential' : ''}</small></div>
+        <div class="amt neg">−${money(it.amount)}</div>
+        <div class="btnrow">
+          <button class="btn primary" onclick="markPaid('${it.key}','${it.accountId}',${it.amount},'${esc(it.category)}','${esc(it.name).replace(/'/g, '')}','${it.date}')">Mark paid</button>
+          <button class="btn" onclick="postpone('${it.key}','${it.date}',7)">+7d</button>
+          <button class="btn ghost" onclick="skip('${it.key}')">Skip</button>
+        </div>
+      </div>`;
+    }
+  }
+  h += `</div>`;
+
+  const paidKeys = Object.keys(STATE.paid);
+  if (paidKeys.length) {
+    h += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--grid)">
+      <span class="muted" style="font-size:12.5px">${paidKeys.length} commitment${paidKeys.length === 1 ? '' : 's'} settled or skipped.</span>
+      <button class="btn ghost" style="margin-left:8px" onclick="resetPaid()">Undo all</button></div>`;
+  }
+  h += `</div>`;
+  return h;
+}
+
+/* ============================================================
+   LOAN
+   ============================================================ */
+function viewLoan() {
+  const L = E.loanSchedule();
+  let h = `<div class="tiles" style="margin-top:14px">
+    <div class="tile"><div class="label">Outstanding</div><div class="value">${money(L.startingBalance)}</div>
+      <div class="note">${esc(SEED.loan.name)} · ${(SEED.loan.annualRate * 100).toFixed(1)}% a year</div></div>
+    <div class="tile"><div class="label">Debt-free on</div>
+      <div class="value">${L.stalled ? '<span style="color:var(--critical)">never</span>' : prettyFull(L.payoffDate)}</div>
+      <div class="note">${L.stalled
+      ? 'The monthly deduction does not cover the interest. Check the rate and deduction.'
+      : `${L.monthsRemaining} payments left · ${money(L.totalInterest)} interest still to pay`}</div></div>
+  </div>`;
+
+  h += `<div class="card"><h2>Add a manual payment <span class="sub">— on top of the payroll deduction</span></h2>
+    <div class="grid2">
+      <div class="field"><label class="fld">Date</label><input type="date" id="lp-date" value="${E.asOf}"></div>
+      <div class="field"><label class="fld">Amount</label><input type="number" id="lp-amt" placeholder="5000"></div>
+    </div>
+    <button class="btn primary" onclick="addLoanPayment()">Add payment and re-forecast</button>
+    <div class="muted" style="font-size:12.5px;margin-top:8px">
+      Added payments live in this browser only. To keep them, add them to <code>seed.js</code>
+      under <code>loan.manualPayments</code>.
+    </div></div>`;
+
+  h += `<div class="card"><h2>Payoff schedule</h2><div class="wrapper-scroll"><table><thead><tr>
+    <th>Month</th><th class="num">Interest</th><th class="num">Payroll</th><th class="num">Manual</th><th class="num">Balance after</th>
+  </tr></thead><tbody>`;
+  for (const r of L.rows) {
+    h += `<tr>
+      <td>${esc(r.month)}</td>
+      <td class="num muted">${r.interest ? money(r.interest) : '—'}</td>
+      <td class="num">${r.auto ? money(r.auto) : '—'}</td>
+      <td class="num">${r.manual ? money(r.manual) : '—'}</td>
+      <td class="num"><strong>${money(r.closing)}</strong></td>
+    </tr>`;
+  }
+  h += `</tbody></table></div>
+    <div class="muted" style="font-size:12.5px;margin-top:10px">
+      Total still to pay ${money(L.totalPaid)} — ${money(L.startingBalance)} principal
+      plus ${money(L.totalInterest)} interest.
+    </div></div>`;
+  return h;
+}
+
+/* ============================================================
+   EKUB
+   ============================================================ */
+function viewEkub() {
+  const k = E.ekubStatus();
+  const pct = Math.round(k.progress * 100);
+  let h = `<div class="tiles" style="margin-top:14px">
+    <div class="tile"><div class="label">Contributed so far</div><div class="value">${money(k.contributedSoFar)}</div>
+      <div class="note">${k.paidCount} of ${k.totalRounds} rounds · ${money(SEED.ekub.contributionAmount)} each</div></div>
+    <div class="tile"><div class="label">Your payout</div><div class="value">${money(k.payoutAmount)}</div>
+      <div class="note">Round ${k.payoutRound} · ${k.alreadyPaidOut ? 'already received' : prettyFull(k.payoutDate) + ' · ' + relDays(k.payoutDate)}</div></div>
+  </div>`;
+
+  h += `<div class="card"><h2>Cycle progress</h2>
+    <div class="bar-row">
+      <div class="bar-head"><span class="cat">Rounds paid</span><span class="vals">${k.paidCount} / ${k.totalRounds} · ${pct}%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div style="margin-top:14px;font-size:13.5px;color:var(--text-secondary)">
+      ${k.nextDue
+      ? `Round <strong>${k.nextRound}</strong> of ${money(SEED.ekub.contributionAmount)} ${k.overdue
+        ? `<strong style="color:var(--critical)">was due ${pretty(k.nextDue)}</strong> and is not marked paid`
+        : `is due ${pretty(k.nextDue)} (${relDays(k.nextDue)})`}.`
+      : 'The cycle is finished.'}
+    </div></div>`;
+
+  h += `<div class="card"><h2>What Ekub actually does for you</h2>
+    <div class="wrapper-scroll"><table><tbody>
+      <tr><td>You will put in, over the whole cycle</td><td class="num">${money(k.totalContribution)}</td></tr>
+      <tr><td>You will take out</td><td class="num">${money(k.payoutAmount)}</td></tr>
+      <tr><td>Net over the cycle</td><td class="num"><strong>${money(k.payoutAmount - k.totalContribution)}</strong></td></tr>
+      <tr><td>Paid in by the time you collect (round ${k.payoutRound})</td><td class="num">${money(k.contributedByPayout)}</td></tr>
+      <tr><td>Cash you get ahead of your own money at payout</td><td class="num ${k.netAtPayout >= 0 ? 'pos' : 'neg'}"><strong>${money(k.netAtPayout)}</strong></td></tr>
+    </tbody></table></div>
+    <div class="muted" style="font-size:12.5px;margin-top:10px">
+      Ekub does not create money — over a full cycle it nets to zero. What it buys you is
+      <em>timing</em>: ${money(k.netAtPayout)} arriving earlier than you could have saved it,
+      ${k.netAtPayout >= 0 ? 'which is the whole point of taking an early round.' : 'meaning your round is late in the cycle — you are effectively lending to the group.'}
+    </div></div>`;
+
+  h += `<div class="card"><h2>Rounds</h2><div class="wrapper-scroll"><table><thead><tr>
+    <th>Round</th><th>Date</th><th>Status</th></tr></thead><tbody>`;
+  for (let i = 1; i <= k.totalRounds; i++) {
+    const rec = (SEED.ekub.contributionsPaid || []).find(c => c.round === i);
+    const mine = i === k.payoutRound;
+    h += `<tr>
+      <td>${i}${mine ? ' <span class="pill ok">your payout</span>' : ''}</td>
+      <td>${rec ? pretty(rec.date) : '<span class="muted">—</span>'}</td>
+      <td>${rec ? '<span class="pill ok">paid</span>'
+        : i === k.nextRound ? (k.overdue ? '<span class="pill bad">overdue</span>' : '<span class="pill warn">next</span>')
+          : '<span class="muted">upcoming</span>'}</td>
+    </tr>`;
+  }
+  h += `</tbody></table></div></div>`;
+  return h;
+}
+
+/* ============================================================
+   RELOCATION
+   ============================================================ */
+function viewRelocation() {
+  const r = E.relocation();
+  const bad = !r.affordable;
+  let h = `<div class="card" style="border-left:4px solid ${bad ? 'var(--critical)' : 'var(--good)'}">
+    <h2>Verdict <span class="sub">— moving on ${prettyFull(r.targetDate)}, ${r.daysOut} days away</span></h2>
+    <div class="hero" style="color:${bad ? 'var(--critical)' : 'var(--good-text)'};font-size:28px">
+      ${bad ? '✕' : '✓'} ${esc(r.verdict)}</div>
+  </div>`;
+
+  h += `<div class="card"><h2>Cash needed up front</h2><div class="wrapper-scroll"><table><tbody>
+    <tr><td>${SEED.relocation.advanceMonths} months rent in advance, at ${money(r.newRent)}</td><td class="num">${money(r.advance)}</td></tr>
+    <tr><td>Deposit</td><td class="num">${money(SEED.relocation.deposit)}</td></tr>
+    <tr><td>Moving costs</td><td class="num">${money(SEED.relocation.movingCost)}</td></tr>
+    <tr><td><strong>Total needed on the day</strong></td><td class="num"><strong>${money(r.upfrontNeed)}</strong></td></tr>
+    <tr><td>Cash you will actually have (income arriving late, buffer kept back)</td><td class="num">${money(r.availableAtTarget)}</td></tr>
+    <tr><td><strong>${r.upfrontShortfall > 0 ? 'Short by' : 'Spare'}</strong></td>
+        <td class="num ${r.upfrontShortfall > 0 ? 'neg' : 'pos'}"><strong>${money(Math.abs(r.upfrontShortfall))}</strong></td></tr>
+  </tbody></table></div>
+  ${r.advanceShortfall > 0 ? `<div class="alert danger" style="margin-top:12px"><span class="ico">!</span><span>
+    You cannot even cover the rent advance on its own — short ${money(r.advanceShortfall)} before
+    deposit or moving costs are counted.</span></div>` : ''}
+  </div>`;
+
+  h += `<div class="card"><h2>Every month after the move</h2><div class="wrapper-scroll"><table><tbody>
+    <tr><td>Dependable income</td><td class="num pos">${money(r.monthlyIncome)}</td></tr>
+    <tr><td>Rent goes from ${money(r.currentRent)} to ${money(r.newRent)}</td><td class="num neg">+${money(r.newRent - r.currentRent)}</td></tr>
+    <tr><td>Other costs change by</td><td class="num">${money(SEED.relocation.otherMonthlyDelta)}</td></tr>
+    <tr><td>Total going out, including Ekub</td><td class="num neg">${money(r.newMonthlyOut)}</td></tr>
+    <tr><td><strong>${r.monthlyDeficit > 0 ? 'Monthly shortfall' : 'Monthly surplus'}</strong></td>
+        <td class="num ${r.monthlyDeficit > 0 ? 'neg' : 'pos'}"><strong>${money(Math.abs(r.monthlyDeficit))}</strong></td></tr>
+  </tbody></table></div>
+  ${r.monthlyDeficit > 0 ? `<div class="alert danger" style="margin-top:12px"><span class="ico">!</span><span>
+    Even if you scrape together the advance, you would run ${money(r.monthlyDeficit)} short
+    <em>every month</em> afterwards. That is the part that does not fix itself.</span></div>` : ''}
+  </div>`;
+
+  h += `<div class="card"><h2>What would have to change</h2><div style="font-size:13.5px;color:var(--text-secondary)">`;
+  const fixes = [];
+  if (r.upfrontShortfall > 0 && r.daysOut > 0) {
+    fixes.push(`Save <strong>${money(r.monthlySavingNeeded)} a month</strong> between now and ${prettyFull(r.targetDate)} to cover the upfront gap.`);
+  }
+  if (r.monthlyDeficit > 0) {
+    const affordableRent = round2(r.newRent - r.monthlyDeficit);
+    fixes.push(`Find rent at <strong>${money(affordableRent)}</strong> or below instead of ${money(r.newRent)} — that is the most the monthly numbers support.`);
+    fixes.push(`Or raise dependable monthly income by <strong>${money(r.monthlyDeficit)}</strong>.`);
+  }
+  if (SEED.loan.autoDeductAmount > 0) {
+    const L = E.loanSchedule();
+    if (!L.stalled) fixes.push(`After the loan clears on <strong>${prettyFull(L.payoffDate)}</strong>, ${money(SEED.loan.autoDeductAmount)} a month stops leaving your payroll. Moving after that date is a different calculation — and probably the honest answer.`);
+  }
+  if (!fixes.length) fixes.push('Nothing — the move works on these numbers.');
+  h += `<ul style="padding-left:20px;margin:0">${fixes.map(f => `<li style="margin-bottom:6px">${f}</li>`).join('')}</ul>`;
+  h += `</div></div>`;
+  return h;
+}
+
+/* ============================================================
+   BUDGET
+   ============================================================ */
+function viewBudget() {
+  const mk = E.asOf.slice(0, 7);
+  const rows = E.budgetStatus(mk);
+  const spent = rows.reduce((s, r) => s + r.spent, 0);
+  const cap = rows.reduce((s, r) => s + r.cap, 0);
+
+  let h = `<div class="tiles" style="margin-top:14px">
+    <div class="tile"><div class="label">Spent this month</div><div class="value">${money(spent)}</div>
+      <div class="note">of ${money(cap)} budgeted · ${MON[D(E.asOf).getMonth()]} ${D(E.asOf).getFullYear()}</div></div>
+    <div class="tile"><div class="label">Left to spend</div>
+      <div class="value" style="color:${cap - spent < 0 ? 'var(--critical)' : 'var(--good-text)'}">${money(cap - spent)}</div>
+      <div class="note">${rows.filter(r => r.over).length} categor${rows.filter(r => r.over).length === 1 ? 'y' : 'ies'} over budget</div></div>
+  </div>`;
+
+  h += `<div class="card"><h2>By category <span class="sub">— the mark is your cap</span></h2>`;
+  for (const r of rows) {
+    const w = Math.min(100, r.pct * 100);
+    h += `<div class="bar-row">
+      <div class="bar-head">
+        <span class="cat">${esc(r.category)} ${r.over ? '<span class="pill bad">over</span>' : ''}</span>
+        <span class="vals">${money(r.spent)} of ${money(r.cap)}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${r.over ? 'over' : ''}" style="width:${w}%"></div>
+        <div class="bar-cap" style="left:calc(100% - 1px)"></div>
+      </div>
+    </div>`;
+  }
+  if (spent === 0) {
+    h += `<div class="empty" style="margin-top:12px">No spending recorded this month yet, so every bar is empty.
+      Log something in the Inbox tab and it will appear here.</div>`;
+  }
+  h += `</div>`;
+  return h;
+}
+
+/* ============================================================
+   FORECAST — line chart, 3 scenarios
+   ============================================================ */
+let FC_DAYS = 90;
+function viewForecast() {
+  const scen = [
+    { id: 'base', label: 'Income on time', color: 'var(--series-1)' },
+    { id: 'late', label: `Income ${SEED.policy.lateIncomeDays} days late`, color: 'var(--series-2)' },
+    { id: 'stress', label: `Late + ${Math.round(SEED.policy.stressOverrun * 100)}% overspend`, color: 'var(--series-3)' },
+  ];
+  const runs = scen.map(s => ({ ...s, f: E.forecast(FC_DAYS, s.id) }));
+
+  let h = `<div class="card">
+    <h2>Next ${FC_DAYS} days <span class="sub">— three ways it could go</span></h2>
+    <div class="btnrow" style="margin-bottom:12px">
+      ${[30, 60, 90, 180].map(d => `<button class="btn ${d === FC_DAYS ? 'primary' : ''}" onclick="setDays(${d})">${d} days</button>`).join('')}
+    </div>
+    <div class="legend">${runs.map(r => `<span class="key"><span class="swatch" style="background:${r.color}"></span>${esc(r.label)}</span>`).join('')}</div>
+    ${chartForecast(runs)}
+  </div>`;
+
+  h += `<div class="tiles" style="margin-top:14px">`;
+  for (const r of runs) {
+    const danger = r.f.firstNegative;
+    h += `<div class="tile">
+      <div class="label"><span class="swatch" style="display:inline-block;width:12px;height:2.5px;border-radius:2px;background:${r.color};vertical-align:middle;margin-right:5px"></span>${esc(r.label)}</div>
+      <div class="value sm" style="color:${danger ? 'var(--critical)' : r.f.lowest.balance < SEED.policy.bufferAmount ? 'var(--serious)' : 'var(--good-text)'}">
+        ${money(r.f.lowest.balance)}</div>
+      <div class="note">Lowest point, ${pretty(r.f.lowest.date)}.
+        ${danger ? `<strong style="color:var(--critical)">Out of money ${pretty(danger)}.</strong>` : 'Never goes below zero.'}
+        <br>Ends at ${money(r.f.endBalance)}.</div>
+    </div>`;
+  }
+  h += `</div>`;
+
+  // Table view — required relief for the light-mode aqua contrast warning,
+  // and the honest way to read exact figures anyway.
+  const base = runs[0].f;
+  const notable = base.series.filter(d => d.events.length);
+  h += `<div class="card"><h2>Every money event <span class="sub">— table view of the chart above</span></h2>
+    <div class="wrapper-scroll"><table><thead><tr>
+      <th>Date</th><th>What happens</th><th class="num">In</th><th class="num">Out</th>
+      ${runs.map(r => `<th class="num">${esc(r.label)}</th>`).join('')}
+    </tr></thead><tbody>`;
+  for (const d of notable) {
+    h += `<tr><td style="white-space:nowrap">${pretty(d.date)}</td>
+      <td style="font-size:12.5px">${d.events.map(esc).join('<br>')}</td>
+      <td class="num pos">${d.in ? money(d.in) : '—'}</td>
+      <td class="num neg">${d.out ? money(d.out) : '—'}</td>
+      ${runs.map(r => {
+    const row = r.f.series.find(x => x.date === d.date);
+    const v = row ? row.balance : 0;
+    return `<td class="num ${v < 0 ? 'neg' : ''}">${money(v)}</td>`;
+  }).join('')}
+    </tr>`;
+  }
+  if (!notable.length) h += `<tr><td colspan="7" class="empty">No scheduled money events in this window.</td></tr>`;
+  h += `</tbody></table></div></div>`;
+  return h;
+}
+
+function chartForecast(runs) {
+  const W = 760, H = 260, P = { t: 14, r: 54, b: 28, l: 56 };
+  const iw = W - P.l - P.r, ih = H - P.t - P.b;
+  const n = runs[0].f.series.length;
+
+  let lo = Infinity, hi = -Infinity;
+  runs.forEach(r => r.f.series.forEach(d => { lo = Math.min(lo, d.balance); hi = Math.max(hi, d.balance); }));
+  lo = Math.min(lo, 0); hi = Math.max(hi, 1);
+  const pad = (hi - lo) * 0.08 || 1;
+  lo -= pad; hi += pad;
+
+  const x = i => P.l + (i / Math.max(1, n - 1)) * iw;
+  const y = v => P.t + ih - ((v - lo) / (hi - lo)) * ih;
+
+  // gridlines at round numbers
+  const ticks = [];
+  const step = Math.pow(10, Math.floor(Math.log10(Math.max(1, hi - lo)))) / 2;
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(v);
+
+  let g = `<div class="chart-shell"><svg class="chart" viewBox="0 0 ${W} ${H}" role="img"
+    aria-label="Projected combined balance over ${FC_DAYS} days under three income scenarios">`;
+
+  // grid
+  for (const v of ticks) {
+    g += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"
+      stroke="var(--grid)" stroke-width="1"/>`;
+    g += `<text x="${P.l - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end"
+      font-size="10.5" fill="var(--text-muted)" style="font-variant-numeric:tabular-nums">${Math.round(v / 1000)}k</text>`;
+  }
+  // zero line emphasised — the line that matters
+  if (lo < 0 && hi > 0) {
+    g += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}"
+      stroke="var(--critical)" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.8"/>`;
+  }
+  // baseline
+  g += `<line x1="${P.l}" x2="${W - P.r}" y1="${P.t + ih}" y2="${P.t + ih}" stroke="var(--baseline)" stroke-width="1"/>`;
+
+  // x labels: first, middle, last
+  [0, Math.floor((n - 1) / 2), n - 1].forEach(i => {
+    const d = runs[0].f.series[i];
+    g += `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}"
+      font-size="10.5" fill="var(--text-muted)">${pretty(d.date)}</text>`;
+  });
+
+  // lines
+  runs.forEach(r => {
+    const pts = r.f.series.map((d, i) => `${x(i).toFixed(1)},${y(d.balance).toFixed(1)}`).join(' ');
+    g += `<polyline points="${pts}" fill="none" stroke="${r.color}" stroke-width="2"
+      stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+
+  // direct end labels (identity never by color alone)
+  const ends = runs.map(r => ({ r, v: r.f.endBalance, yy: y(r.f.endBalance) }))
+    .sort((a, b) => a.yy - b.yy);
+  let prevY = -Infinity;
+  ends.forEach(e => {
+    let yy = e.yy;
+    if (yy - prevY < 12) yy = prevY + 12;   // nudge apart so labels never collide
+    prevY = yy;
+    g += `<circle cx="${x(n - 1).toFixed(1)}" cy="${e.yy.toFixed(1)}" r="3.5"
+      fill="${e.r.color}" stroke="var(--surface-1)" stroke-width="2"/>`;
+    g += `<text x="${(x(n - 1) + 8).toFixed(1)}" y="${(yy + 3.5).toFixed(1)}" font-size="10.5"
+      fill="var(--text-secondary)" style="font-variant-numeric:tabular-nums">${money(e.v)}</text>`;
+  });
+
+  // lowest point marker on the honest (late) scenario
+  const late = runs.find(r => r.id === 'late') || runs[0];
+  const li = late.f.series.findIndex(d => d.date === late.f.lowest.date);
+  if (li >= 0) {
+    g += `<circle cx="${x(li).toFixed(1)}" cy="${y(late.f.lowest.balance).toFixed(1)}" r="4"
+      fill="none" stroke="${late.color}" stroke-width="2"/>`;
+  }
+
+  // hover layer
+  g += `<g id="fc-cross" opacity="0">
+      <line y1="${P.t}" y2="${P.t + ih}" stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="3 3"/>
+    </g>`;
+  g += `<rect x="${P.l}" y="${P.t}" width="${iw}" height="${ih}" fill="transparent"
+      style="cursor:crosshair" onmousemove="fcHover(event, ${P.l}, ${iw}, ${n})"
+      onmouseleave="fcLeave()"/>`;
+  g += `</svg><div class="tooltip" id="fc-tip"></div></div>`;
+  return g;
+}
+
+/* hover state kept out of the markup so re-render does not fight it */
+let FC_RUNS_CACHE = null;
+function fcHover(ev, left, iw, n) {
+  const svg = ev.currentTarget.ownerSVGElement;
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+  let i = Math.round(((loc.x - left) / iw) * (n - 1));
+  i = Math.max(0, Math.min(n - 1, i));
+
+  const runs = [
+    { label: 'Income on time', color: 'var(--series-1)', f: E.forecast(FC_DAYS, 'base') },
+    { label: `Income ${SEED.policy.lateIncomeDays} days late`, color: 'var(--series-2)', f: E.forecast(FC_DAYS, 'late') },
+    { label: `Late + ${Math.round(SEED.policy.stressOverrun * 100)}% overspend`, color: 'var(--series-3)', f: E.forecast(FC_DAYS, 'stress') },
+  ];
+  const d0 = runs[0].f.series[i];
+  const cross = document.getElementById('fc-cross');
+  const xPos = left + (i / Math.max(1, n - 1)) * iw;
+  if (cross) {
+    cross.setAttribute('opacity', '1');
+    cross.querySelector('line').setAttribute('x1', xPos);
+    cross.querySelector('line').setAttribute('x2', xPos);
+  }
+  const tip = document.getElementById('fc-tip');
+  if (!tip) return;
+  tip.innerHTML = `<div class="tt-date">${pretty(d0.date)}</div>` +
+    runs.map(r => {
+      const v = r.f.series[i].balance;
+      return `<div class="tt-row"><span><span class="swatch" style="display:inline-block;width:10px;height:2.5px;border-radius:2px;background:${r.color};vertical-align:middle;margin-right:5px"></span>${esc(r.label)}</span><span class="${v < 0 ? 'neg' : ''}">${money(v)}</span></div>`;
+    }).join('') +
+    (d0.events.length ? `<div class="tt-ev">${d0.events.map(esc).join('<br>')}</div>` : '');
+  tip.style.opacity = '1';
+  const shell = tip.parentElement.getBoundingClientRect();
+  let lx = ev.clientX - shell.left + 14;
+  if (lx + 180 > shell.width) lx = ev.clientX - shell.left - 194;
+  tip.style.left = Math.max(0, lx) + 'px';
+  tip.style.top = Math.max(0, ev.clientY - shell.top - 10) + 'px';
+}
+function fcLeave() {
+  const c = document.getElementById('fc-cross'); if (c) c.setAttribute('opacity', '0');
+  const t = document.getElementById('fc-tip'); if (t) t.style.opacity = '0';
+}
+function setDays(d) { FC_DAYS = d; render(); }
+
+/* ============================================================
+   INBOX — paste a bank SMS, turn it into a transaction
+   ============================================================ */
+function viewInbox() {
+  let h = `<div class="card"><h2>Paste a bank message</h2>
+    <div class="field"><label class="fld">Sender (as it shows on your phone)</label>
+      <input type="text" id="sms-sender" placeholder="127, CBE, Dashen…"></div>
+    <div class="field"><label class="fld">Message</label>
+      <textarea id="sms-body" placeholder="Paste the whole SMS here, exactly as received"></textarea></div>
+    <div class="btnrow">
+      <button class="btn primary" onclick="parseInbox()">Read it</button>
+      <button class="btn" onclick="loadSample()">Load a sample</button>
+    </div>
+    <div class="muted" style="font-size:12.5px;margin-top:10px">
+      On Android this happens automatically. On iPhone there is no SMS access at all —
+      this paste box is the fallback.
+    </div></div>`;
+
+  if (!STATE.inbox.length) {
+    h += `<div class="card"><h2>Pending</h2><div class="empty">Nothing waiting. Parsed messages land here for you to confirm.</div></div>`;
+    return h;
+  }
+
+  h += `<div class="card"><h2>Pending <span class="sub">— ${STATE.inbox.length} to confirm</span></h2>`;
+  STATE.inbox.forEach((p, idx) => {
+    const acct = p.accountId ? E.accountById[p.accountId] : null;
+    const conf = p.confidence >= 0.7 ? 'ok' : p.confidence >= 0.45 ? 'warn' : 'bad';
+    h += `<div style="padding:12px 0;border-bottom:1px solid var(--grid)">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
+        <div><strong>${esc(p.providerLabel)}</strong>
+          <span class="pill ${conf}">${Math.round(p.confidence * 100)}% sure</span>
+          ${p.looksLikeTransfer ? '<span class="pill">looks like your own transfer</span>' : ''}</div>
+        <div class="amt ${p.signedAmount < 0 ? 'neg' : 'pos'}" style="font-size:17px;font-weight:650">
+          ${p.signedAmount != null ? money(p.signedAmount) : '<span class="muted">amount unclear</span>'}</div>
+      </div>
+      <div class="muted" style="font-size:12px;margin:6px 0">${esc(p.raw)}</div>`;
+
+    if (p.missing.length) {
+      h += `<div class="alert warn" style="margin:8px 0"><span class="ico">△</span><span>
+        Could not work out: ${esc(p.missing.join(', '))}. Fill it in below.</span></div>`;
+    }
+    if (p.statedBalance != null && p.accountId) {
+      const r = E.reconcile(p.accountId, p.statedBalance, E.asOf);
+      h += `<div class="alert ${r.clean ? 'good' : 'warn'}" style="margin:8px 0">
+        <span class="ico">${r.clean ? '✓' : '△'}</span><span>
+        The bank says ${money(r.stated)}; Birr calculates ${money(r.calculated)}.
+        ${r.clean ? 'They agree.' : `<strong>Off by ${money(Math.abs(r.drift))}</strong> — something is missing.`}</span></div>`;
+    }
+
+    h += `<div class="grid2">
+      <div class="field"><label class="fld">Account</label>
+        <select onchange="setInbox(${idx},'accountId',this.value)">
+          <option value="">— which account? —</option>
+          ${SEED.accounts.map(a => `<option value="${a.id}" ${p.accountId === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}
+        </select></div>
+      <div class="field"><label class="fld">What was this for?</label>
+        <select onchange="setInbox(${idx},'category',this.value)">
+          <option value="">— category —</option>
+          ${SEED.categories.map(c => `<option value="${esc(c)}" ${p.category === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+        </select></div>
+      <div class="field"><label class="fld">Amount</label>
+        <input type="number" step="0.01" value="${p.amount != null ? p.amount : ''}"
+          oninput="setInbox(${idx},'amount',this.value===''?null:parseFloat(this.value))"></div>
+      <div class="field"><label class="fld">Direction</label>
+        <select onchange="setInbox(${idx},'direction',this.value)">
+          <option value="debit" ${p.direction === 'debit' ? 'selected' : ''}>Money out</option>
+          <option value="credit" ${p.direction === 'credit' ? 'selected' : ''}>Money in</option>
+        </select></div>
+      <div class="field"><label class="fld">Date</label>
+        <input type="date" value="${p.date || E.asOf}" oninput="setInbox(${idx},'date',this.value)"></div>
+      <div class="field"><label class="fld">Note</label>
+        <input type="text" value="${esc(p.counterparty || '')}" placeholder="who or what"
+          oninput="setInbox(${idx},'counterparty',this.value)"></div>
+    </div>
+    <div class="btnrow">
+      <button class="btn primary" onclick="commitInbox(${idx})">Log it</button>
+      <button class="btn" onclick="setInbox(${idx},'looksLikeTransfer',${!p.looksLikeTransfer})">
+        ${p.looksLikeTransfer ? 'Not a transfer' : 'This is my own transfer'}</button>
+      <button class="btn ghost" onclick="dropInbox(${idx})">Discard</button>
+    </div></div>`;
+  });
+  h += `</div>`;
+  return h;
+}
+
+const SAMPLES = [
+  ['CBE', 'Dear customer your account 1****5678 has been debited with ETB 450.00 on 13/10/2026. Your current balance is ETB 3,120.00. Ref FT26286XYZ'],
+  ['127', 'You have transferred ETB 250.00 to ABEBE KEBEDE. Your current balance is ETB 880.50. transaction number CAB1234567'],
+  ['CBE', 'Your account 1****5678 has been credited with ETB 28,000.00. Current balance is ETB 31,120.00'],
+  ['127', 'You have transferred ETB 1,000.00 to your CBE account. Your balance is ETB 120.00'],
+];
+let sampleIdx = 0;
+function loadSample() {
+  const [s, b] = SAMPLES[sampleIdx % SAMPLES.length];
+  sampleIdx++;
+  document.getElementById('sms-sender').value = s;
+  document.getElementById('sms-body').value = b;
+}
+
+function parseInbox() {
+  const sender = document.getElementById('sms-sender').value.trim();
+  const body = document.getElementById('sms-body').value.trim();
+  if (!body) return;
+  const p = parseMessage(sender, body, SEED.accounts);
+  p.id = uid();
+  p.date = E.asOf;
+  p.category = p.looksLikeTransfer ? null : null;
+  STATE.inbox.unshift(p);
+  document.getElementById('sms-body').value = '';
+  refresh();
+}
+function setInbox(i, k, v) {
+  STATE.inbox[i][k] = v;
+  if (k === 'amount' || k === 'direction') {
+    const p = STATE.inbox[i];
+    p.signedAmount = p.amount == null || !p.direction ? null
+      : (p.direction === 'debit' ? -p.amount : p.amount);
+  }
+  saveState();
+  if (k !== 'amount' && k !== 'counterparty') render();
+}
+function dropInbox(i) { STATE.inbox.splice(i, 1); refresh(); }
+function commitInbox(i) {
+  const p = STATE.inbox[i];
+  if (p.amount == null || !p.direction) { alert('Set the amount and whether money went in or out.'); return; }
+  if (!p.accountId) { alert('Pick which account this was.'); return; }
+  const signed = p.direction === 'debit' ? -Math.abs(p.amount) : Math.abs(p.amount);
+  STATE.transactions.push({
+    id: uid(), date: p.date || E.asOf, accountId: p.accountId,
+    amount: signed, category: p.looksLikeTransfer ? null : (p.category || 'Other'),
+    note: p.counterparty || p.providerLabel, isTransfer: !!p.looksLikeTransfer,
+    source: 'sms', statedBalance: p.statedBalance,
+  });
+  if (p.statedBalance != null) STATE.recon[p.accountId] = p.statedBalance;
+  STATE.inbox.splice(i, 1);
+  refresh();
+}
+
+/* ============================================================
+   CHECKS
+   ============================================================ */
+function viewChecks() {
+  const out = runTests({ makeEngine, parseMessage, SEED });
+  let h = `<div class="card" style="border-left:4px solid ${out.allPass ? 'var(--good)' : 'var(--critical)'}">
+    <h2>Engine self-validation</h2>
+    <div class="hero" style="font-size:28px;color:${out.allPass ? 'var(--good-text)' : 'var(--critical)'}">
+      ${out.passed} of ${out.total} checks pass</div>
+    <div class="note" style="font-size:13px;color:var(--text-secondary);margin-top:6px">
+      ${out.allPass
+      ? 'Every figure on every screen is derived from logic that checks out against these assertions.'
+      : 'Something is wrong. Do not trust the numbers until these pass.'}
+    </div></div>`;
+  h += `<div class="card"><h2>Each check</h2>`;
+  for (const r of out.results) {
+    h += `<div class="check ${r.pass ? 'pass' : 'fail'}">
+      <span class="mk">${r.pass ? '✓' : '✕'}</span>
+      <span>${r.n}. ${esc(r.name)}${r.pass ? '' : `<br><span class="detail">${esc(r.detail)}</span>`}</span>
+    </div>`;
+  }
+  h += `</div>`;
+  return h;
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function markPaid(key, accountId, amount, category, name, date) {
+  STATE.paid[key] = true;
+  STATE.transactions.push({
+    id: uid(), date, accountId, amount: -Math.abs(amount),
+    category, note: name, isTransfer: false, source: 'calendar',
+  });
+  refresh();
+}
+function skip(key) { STATE.paid[key] = true; refresh(); }
+function postpone(key, date, days) { STATE.overrides[key] = E.addDaysISO(date, days); refresh(); }
+function resetPaid() { STATE.paid = {}; STATE.overrides = {}; refresh(); }
+function delTx(id) {
+  STATE.transactions = STATE.transactions.filter(t => t.id !== id);
+  refresh();
+}
+function setRecon(id, v) {
+  if (v === '') delete STATE.recon[id]; else STATE.recon[id] = parseFloat(v);
+  saveState();
+  clearTimeout(setRecon._t);
+  setRecon._t = setTimeout(render, 450);
+}
+function addLoanPayment() {
+  const d = document.getElementById('lp-date').value;
+  const a = parseFloat(document.getElementById('lp-amt').value);
+  if (!d || !a || a <= 0) { alert('Enter a date and an amount.'); return; }
+  SEED.loan.manualPayments.push({ date: d, amount: a, note: 'added in app' });
+  refresh();
+}
+function go(t) { TAB = t; window.scrollTo(0, 0); render(); }
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const VIEWS = {
+  home: viewHome, accounts: viewAccounts, calendar: viewCalendar,
+  loan: viewLoan, ekub: viewEkub, relocation: viewRelocation,
+  budget: viewBudget, forecast: viewForecast, inbox: viewInbox,
+  checks: viewChecks,
+};
+
+function render() {
+  document.getElementById('tabs').innerHTML = TABS.map(([id, label]) =>
+    `<button aria-selected="${id === TAB}" onclick="go('${id}')">${label}</button>`).join('');
+  let body;
+  try {
+    body = VIEWS[TAB]();
+  } catch (e) {
+    body = `<div class="card" style="border-left:4px solid var(--critical)">
+      <h2>This screen failed to draw</h2>
+      <div style="font-size:13.5px">${esc(e.message)}</div>
+      <pre style="font-size:11px;overflow:auto;color:var(--text-muted)">${esc(e.stack || '')}</pre></div>`;
+  }
+  document.getElementById('view').innerHTML = body;
+  document.getElementById('asof').textContent = 'as of ' + prettyFull(E.asOf);
+}
+
+document.addEventListener('DOMContentLoaded', render);
+
+</script>
+</body>
+</html>
