@@ -406,6 +406,7 @@ export default function Setup() {
   /* ---------------- data / backup ---------------- */
   function DataEditor() {
     const [text, setText] = useState('');
+    const [backup, setBackup] = useState<string | null>(null);
     return (
       <div style={{ paddingTop: 10 }}>
         <Field label="How cautious Birr should be">
@@ -436,7 +437,37 @@ export default function Setup() {
               show('Backup downloaded');
             }}
           >Download a backup</button>
+          {/* Downloads are blocked in some embedded viewers, so there is always
+              a plain-text route out of the app that cannot be taken away. */}
+          <button className="btn" onClick={() => setBackup(b => (b ? null : exportJSON(data)))}>
+            {backup ? 'Hide backup text' : 'Show backup text'}
+          </button>
+          {backup && (
+            <button
+              className="btn"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(backup);
+                  show('Copied');
+                } catch {
+                  show('Select the text and copy it by hand');
+                }
+              }}
+            >Copy</button>
+          )}
         </div>
+        {backup && (
+          <>
+            <textarea
+              readOnly value={backup} onFocus={e => e.currentTarget.select()}
+              style={{ marginTop: 10, minHeight: 150, fontSize: 12 }}
+            />
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+              Copy this somewhere safe — a note to yourself, an email. Pasting it back
+              into the box below restores everything.
+            </div>
+          </>
+        )}
 
         <Field label="Restore from a backup (paste the file contents)">
           <textarea value={text} onChange={e => setText(e.target.value)} placeholder="{ … }" />
