@@ -34,6 +34,8 @@ export default function Home({ go }: { go: (r: Route) => void }) {
       <Card title="What needs attention">
         <Alerts
           items={alerts}
+          go={r => go(r as Route)}
+          max={6}
           emptyText="Nothing pressing. The next 90 days stay above your buffer even if income arrives late."
         />
       </Card>
@@ -67,7 +69,10 @@ export default function Home({ go }: { go: (r: Route) => void }) {
               value={money(ln.startingBalance)}
               note={ln.stalled
                 ? <span className="pill bad">never clears — check the figures</span>
-                : <>Clear by <strong>{fmtDateFull(ln.payoffDate!)}</strong> · {ln.monthsRemaining} payment{ln.monthsRemaining === 1 ? '' : 's'} left</>}
+                : <>
+                    Clear by <strong>{fmtDateFull(ln.payoffDate!)}</strong> · {ln.monthsRemaining} payment{ln.monthsRemaining === 1 ? '' : 's'} left
+                    {ln.paidSoFar > 0 && <><br />{money(ln.paidSoFar)} paid off {money(ln.confirmedBalance)}</>}
+                  </>}
             />
           );
         })()}

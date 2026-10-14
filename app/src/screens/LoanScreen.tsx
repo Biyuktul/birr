@@ -14,20 +14,30 @@ export default function LoanScreen() {
 
   function addPayment() {
     if (!date || amount <= 0) { show('Enter a date and an amount'); return; }
+    if (amount > L.startingBalance + 0.005) {
+      show(`That is more than you owe. The balance is ${money(L.startingBalance)}.`);
+      return;
+    }
     update(d => ({
       ...d,
       loan: { ...d.loan, manualPayments: [...d.loan.manualPayments, { id: uid('p'), date, amount }] },
     }));
+    const future = date > engine.asOf;
+    show(future
+      ? `Scheduled ${money(amount)} for ${fmtDateFull(date)}. It comes off the balance on the day.`
+      : `Paid ${money(amount)}. The loan is now ${money(L.startingBalance - amount)}.`);
     setAmount(0);
-    show('Payment added');
   }
 
   function removePayment(id: string) {
+    const p = data.loan.manualPayments.find(x => x.id === id);
     update(d => ({
       ...d,
-      loan: { ...d.loan, manualPayments: d.loan.manualPayments.filter(p => p.id !== id) },
+      loan: { ...d.loan, manualPayments: d.loan.manualPayments.filter(x => x.id !== id) },
     }));
-    show('Removed');
+    show(p && p.date <= engine.asOf
+      ? `Removed. The loan goes back to ${money(L.startingBalance + p.amount)}.`
+      : 'Removed.');
   }
 
   if (!data.loan.enabled) {
@@ -38,9 +48,12 @@ export default function LoanScreen() {
     <>
       <div className="tiles">
         <Tile
-          label="Outstanding"
+          label="You owe now"
           value={money(L.startingBalance)}
-          note={`${data.loan.name} · ${(data.loan.annualRate * 100).toFixed(1)}% a year`}
+          note={L.paidSoFar > 0
+            ? <>{money(L.confirmedBalance)} confirmed with the lender, less <strong>{money(L.paidSoFar)}</strong> you have paid since
+               {L.plannedAhead > 0 && <> · {money(L.plannedAhead)} more scheduled</>}</>
+            : <>{data.loan.name} · {(data.loan.annualRate * 100).toFixed(1)}% a year</>}
         />
         <Tile
           label="Debt-free on"
@@ -61,18 +74,35 @@ export default function LoanScreen() {
         </div>
       )}
 
-      <Card title="Pay extra" sub="on top of the payroll deduction">
+      <Card title="Record a payment" sub="any payment you make on top of the payroll deduction">
         <div className="grid2">
           <Field label="Date"><input type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
           <Field label="Amount"><NumberInput value={amount} onChange={setAmount} min={0} /></Field>
         </div>
-        <button className="btn primary" onClick={addPayment}>Add payment and re-forecast</button>
+        <div className="btnrow" style={{ marginBottom: 10 }}>
+          {[1000, 2000, 5000, 12000].map(v => (
+            <button key={v} className="btn ghost sm" onClick={() => setAmount(v)}>{money(v)}</button>
+          ))}
+          <button className="btn ghost sm" onClick={() => setAmount(Math.round(L.startingBalance))}>
+            Clear it: {money(L.startingBalance)}
+          </button>
+        </div>
+        <button className="btn primary" onClick={addPayment}>
+          {amount > 0 ? <>Pay {money(amount)} — balance becomes {money(Math.max(0, L.startingBalance - amount))}</> : 'Record payment'}
+        </button>
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
+          Dated today or earlier it comes off the balance straight away, everywhere in the app.
+          Dated in the future it is money set aside, and Birr counts it as still owed until that day.
+        </div>
 
         {data.loan.manualPayments.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            {data.loan.manualPayments.map(p => (
+            {[...data.loan.manualPayments].sort((a, b) => (a.date < b.date ? 1 : -1)).map(p => (
               <div className="item" key={p.id}>
-                <div className="nm">{fmtDateFull(p.date)}<small>extra payment</small></div>
+                <div className="nm">
+                  {fmtDateFull(p.date)}
+                  <small>{p.date <= engine.asOf ? 'paid — off the balance' : 'scheduled — still owed'}</small>
+                </div>
                 <div className="amt">{money(p.amount)}</div>
                 <button className="btn ghost sm" onClick={() => removePayment(p.id)}>remove</button>
               </div>
@@ -111,6 +141,7 @@ export default function LoanScreen() {
           <div className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
             Still to pay {money(L.totalPaid)} — {money(L.startingBalance)} principal
             plus {money(L.totalInterest)} interest.
+            {L.paidSoFar > 0 && <> You have already paid {money(L.paidSoFar)}.</>}
           </div>
         )}
       </Card>

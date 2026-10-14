@@ -27,7 +27,13 @@ export function Tile({ label, value, note, color, small }: {
   );
 }
 
-export function Alerts({ items, emptyText }: { items: AlertT[]; emptyText?: string }) {
+export function Alerts({ items, emptyText, go, max }: {
+  items: AlertT[]; emptyText?: string;
+  go?: (r: string) => void;
+  /** Show only the first `max`, with a "show the rest" toggle. */
+  max?: number;
+}) {
+  const [all, setAll] = useState(false);
   if (!items.length) {
     return (
       <div className="alert good">
@@ -36,14 +42,35 @@ export function Alerts({ items, emptyText }: { items: AlertT[]; emptyText?: stri
       </div>
     );
   }
+  const shown = max && !all ? items.slice(0, max) : items;
+  const hidden = items.length - shown.length;
   return (
     <>
-      {items.map((a, i) => (
+      {shown.map((a, i) => (
         <div key={i} className={`alert ${a.level}`}>
-          <span className="ico">{a.level === 'danger' ? '!' : a.level === 'warn' ? '△' : '✓'}</span>
-          <span>{a.text}</span>
+          <span className="ico">
+            {a.level === 'danger' ? '!' : a.level === 'warn' ? '△' : a.level === 'good' ? '✓' : 'i'}
+          </span>
+          <span className="alert-body">
+            <span>{a.text}</span>
+            {a.action && go && (
+              <button className="alert-act" onClick={() => go(a.action!.route)}>
+                {a.action.label} ›
+              </button>
+            )}
+          </span>
         </div>
       ))}
+      {hidden > 0 && (
+        <button className="btn ghost sm" style={{ marginTop: 4 }} onClick={() => setAll(true)}>
+          Show {hidden} more
+        </button>
+      )}
+      {max && all && items.length > max && (
+        <button className="btn ghost sm" style={{ marginTop: 4 }} onClick={() => setAll(false)}>
+          Show less
+        </button>
+      )}
     </>
   );
 }

@@ -120,15 +120,43 @@ export function makeEngine(data: Data) {
   /* ============================================================
      LOAN
      ============================================================ */
+  /** Payments you have recorded against the loan, split by whether they have happened yet. */
+  function loanPayments() {
+    const L = data.loan;
+    const since = L.balanceAsOf || null;
+    const counts = (p: { date: ISODate }) =>
+      since == null ? true : cmp(p.date, since) > 0;   // already inside the confirmed figure otherwise
+    let paidSoFar = 0, plannedAhead = 0;
+    for (const p of L.manualPayments || []) {
+      if (!counts(p)) continue;
+      if (cmp(p.date, asOf) <= 0) paidSoFar = round2(paidSoFar + p.amount);
+      else plannedAhead = round2(plannedAhead + p.amount);
+    }
+    return { paidSoFar, plannedAhead };
+  }
+
+  /**
+   * What you owe right now. The stored balance is what the lender last
+   * confirmed; every payment you have recorded since then comes straight off
+   * it, so one payment changes this figure everywhere it is shown.
+   */
+  function loanOutstanding(): number {
+    if (!data.loan.enabled) return 0;
+    return Math.max(0, round2(data.loan.balance - loanPayments().paidSoFar));
+  }
+
   function loanSchedule(): LoanSchedule {
     const L = data.loan;
+    const { paidSoFar, plannedAhead } = loanPayments();
+    const outstanding = loanOutstanding();
     const empty: LoanSchedule = {
       rows: [], payoffDate: null, totalInterest: 0, totalPaid: 0,
-      monthsRemaining: 0, startingBalance: L.balance, stalled: false,
+      monthsRemaining: 0, startingBalance: outstanding,
+      confirmedBalance: L.balance, paidSoFar, plannedAhead, stalled: false,
     };
-    if (!L.enabled || L.balance <= 0) return empty;
+    if (!L.enabled || outstanding <= 0) return empty;
 
-    let balance = L.balance;
+    let balance = outstanding;
     const monthlyRate = (L.annualRate || 0) / 12;
     const rows: LoanRow[] = [];
     let totalInterest = 0, totalPaid = 0;
@@ -150,7 +178,7 @@ export function makeEngine(data: Data) {
       for (const p of manual) {
         if (used.has(p.id)) continue;
         const pd = D(p.date);
-        if (pd.getFullYear() === y && pd.getMonth() === m && cmp(p.date, asOf) >= 0) {
+        if (pd.getFullYear() === y && pd.getMonth() === m && cmp(p.date, asOf) > 0) {
           const pay = Math.min(p.amount, balance);
           balance = round2(balance - pay);
           monthManual = round2(monthManual + pay);
@@ -183,7 +211,9 @@ export function makeEngine(data: Data) {
     return {
       rows, payoffDate, totalInterest, totalPaid,
       monthsRemaining: rows.length,
-      startingBalance: L.balance,
+      startingBalance: outstanding,
+      confirmedBalance: L.balance,
+      paidSoFar, plannedAhead,
       stalled: payoffDate === null,
     };
   }
@@ -256,6 +286,9 @@ export function makeEngine(data: Data) {
 
     if (data.loan.enabled) {
       for (const p of data.loan.manualPayments || []) {
+        // Only money you still owe is a commitment. A payment dated today or
+        // earlier has already left your account and is off the balance.
+        if (cmp(p.date, asOf) <= 0) continue;
         raw.push({
           id: 'loan-' + p.id, key: `loan@${p.id}`, name: 'Loan payment',
           amount: p.amount, accountId: data.loan.accountId, category: 'Debt',
@@ -442,50 +475,145 @@ export function makeEngine(data: Data) {
     const out: Alert[] = [];
     const sts = safeToSpend();
     const f = forecast(90, 'late');
+    const soon = addDaysISO(asOf, 10);
 
+    /* ---------- things that are wrong ---------- */
     if (sts.shortfall > 0)
-      out.push({ level: 'danger', text: `You are ${money(sts.shortfall)} short of the bills due before ${fmtDate(sts.nextPayday)}.` });
+      out.push({
+        level: 'danger',
+        text: `You are ${money(sts.shortfall)} short of the bills due before ${fmtDate(sts.nextPayday)}.`,
+        action: { label: 'See what is due', route: 'calendar' },
+      });
     else if (sts.amount < data.policy.bufferAmount)
-      out.push({ level: 'warn', text: `Only ${money(sts.amount)} is genuinely free until ${fmtDate(sts.nextPayday)}.` });
+      out.push({
+        level: 'warn',
+        text: `Only ${money(sts.amount)} is genuinely free until ${fmtDate(sts.nextPayday)}.`,
+        action: { label: 'See what is due', route: 'calendar' },
+      });
 
     if (f.firstNegative)
-      out.push({ level: 'danger', text: `If income arrives late, you run out of money on ${fmtDate(f.firstNegative)}.` });
+      out.push({
+        level: 'danger',
+        text: `If income arrives late, you run out of money on ${fmtDate(f.firstNegative)}.`,
+        action: { label: 'Open the forecast', route: 'forecast' }, date: f.firstNegative,
+      });
     else if (f.lowest.balance < data.policy.bufferAmount)
-      out.push({ level: 'warn', text: `Tightest point is ${money(f.lowest.balance)} on ${fmtDate(f.lowest.date)}.` });
+      out.push({
+        level: 'warn',
+        text: `Tightest point is ${money(f.lowest.balance)} on ${fmtDate(f.lowest.date)}.`,
+        action: { label: 'Open the forecast', route: 'forecast' }, date: f.lowest.date,
+      });
 
+    if (data.loan.enabled && loanSchedule().stalled)
+      out.push({
+        level: 'danger',
+        text: `The loan never clears — the deduction is not covering the interest.`,
+        action: { label: 'Check the figures', route: 'loan' },
+      });
+
+    /* ---------- what is coming ---------- */
     if (data.ekub.enabled) {
       const es = ekubStatus();
-      if (es.overdue && es.nextDue)
-        out.push({ level: 'warn', text: `Ekub round ${es.nextRound} was due ${fmtDate(es.nextDue)} and is not marked paid.` });
+      if (es.nextDue) {
+        const days = daysBetween(asOf, es.nextDue);
+        if (es.overdue)
+          out.push({
+            level: 'warn',
+            text: `Ekub round ${es.nextRound} was due ${fmtDate(es.nextDue)} — ${money(data.ekub.contributionAmount)} is still unpaid.`,
+            action: { label: 'Mark it paid', route: 'ekub' }, date: es.nextDue,
+          });
+        else
+          out.push({
+            level: 'info',
+            text: `Ekub round ${es.nextRound} — ${money(data.ekub.contributionAmount)} due ${fmtDate(es.nextDue)}${days <= 14 ? ` (${days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`})` : ''}.`,
+            action: { label: 'Open Ekub', route: 'ekub' }, date: es.nextDue,
+          });
+      }
+      if (!es.alreadyPaidOut && daysBetween(asOf, es.payoutDate) <= 45)
+        out.push({
+          level: 'info',
+          text: `Your Ekub payout of ${money(es.payoutAmount)} is expected ${fmtDate(es.payoutDate)}. It stays out of your balance until you mark it received.`,
+          action: { label: 'Open Ekub', route: 'ekub' }, date: es.payoutDate,
+        });
     }
 
     if (data.loan.enabled) {
       const ln = loanSchedule();
-      if (ln.stalled)
-        out.push({ level: 'danger', text: `The loan never clears — the deduction is not reducing the balance. Check the loan figures.` });
+      if (ln.paidSoFar > 0 && !ln.stalled)
+        out.push({
+          level: 'good',
+          text: `You have paid ${money(ln.paidSoFar)} off the loan — ${money(ln.startingBalance)} left, clear by ${fmtDate(ln.payoffDate!)}.`,
+          action: { label: 'Open loan', route: 'loan' },
+        });
+      if (ln.plannedAhead > 0)
+        out.push({
+          level: 'info',
+          text: `${money(ln.plannedAhead)} of loan payments are scheduled but not paid yet.`,
+          action: { label: 'Open loan', route: 'loan' },
+        });
     }
+
+    for (const c of commitments(asOf, soon)) {
+      if (c.kind === 'ekub') continue;                 // already said above
+      const days = daysBetween(asOf, c.date);
+      out.push({
+        level: c.overdue ? 'warn' : 'info',
+        text: c.overdue
+          ? `${c.name} — ${money(c.amount)} was due ${fmtDate(c.date)}.`
+          : `${c.name} — ${money(c.amount)} due ${fmtDate(c.date)}${days === 0 ? ' (today)' : days === 1 ? ' (tomorrow)' : ` (in ${days} days)`}.`,
+        action: { label: 'Open calendar', route: 'calendar' }, date: c.date,
+      });
+    }
+
+    const nextIn = incomeOccurrences(asOf, soon)[0];
+    if (nextIn)
+      out.push({
+        level: 'info',
+        text: `${nextIn.name} of ${money(nextIn.amount)} expected ${fmtDate(nextIn.date)}. Mark it received when it lands.`,
+        action: { label: 'Open calendar', route: 'calendar' }, date: nextIn.date,
+      });
+
+    /* ---------- housekeeping ---------- */
+    if (data.inbox && data.inbox.length)
+      out.push({
+        level: 'warn',
+        text: `${data.inbox.length} bank message${data.inbox.length === 1 ? '' : 's'} waiting to be filed. Your balances are behind until you do.`,
+        action: { label: 'Open inbox', route: 'inbox' },
+      });
 
     for (const a of activeAccounts) {
       const stated = data.recon[a.id];
       if (stated == null) continue;
       const r = reconcile(a.id, stated);
-      if (!r.clean)
-        out.push({ level: 'warn', text: `${a.name} is off by ${money(Math.abs(r.drift))} against the balance the bank last stated.` });
+      if (r.clean) continue;
+      const source = a.type === 'cash' ? 'what you last counted' : 'the balance the bank last stated';
+      out.push({
+        level: 'warn',
+        text: `${a.name} is off by ${money(Math.abs(r.drift))} against ${source}.`,
+        action: { label: 'Reconcile', route: 'accounts' },
+      });
     }
 
     if (data.relocation.enabled) {
       const r = relocation();
       if (!r.affordable)
-        out.push({ level: 'warn', text: `Relocation on ${fmtDateFull(r.targetDate)}: ${r.verdict}.` });
+        out.push({
+          level: 'warn',
+          text: `Relocation on ${fmtDateFull(r.targetDate)}: ${r.verdict}.`,
+          action: { label: 'Open the plan', route: 'relocation' }, date: r.targetDate,
+        });
     }
 
-    return out;
+    const rank: Record<string, number> = { danger: 0, warn: 1, good: 2, info: 3 };
+    return out.sort((a, b) =>
+      rank[a.level] - rank[b.level] ||
+      (a.date && b.date ? cmp(a.date, b.date) : a.date ? -1 : b.date ? 1 : 0));
   }
 
   return {
     data, asOf, accountById, activeAccounts,
     accountBalance, combinedBalance, reconcile,
-    loanSchedule, ekubStatus, ekubRoundDate,
+    loanSchedule, loanOutstanding, loanPayments, ekubStatus, ekubRoundDate,
     commitments, incomeOccurrences,
     safeToSpend, forecast, relocation,
     spendingByCategory, budgetStatus, alerts,

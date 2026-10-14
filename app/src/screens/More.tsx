@@ -19,7 +19,7 @@ export default function More({ go }: { go: (r: Route) => void }) {
         />
         <RowLink label="Budget" meta="this month" onClick={() => go('budget')} />
         {data.loan.enabled && (
-          <RowLink label="Loan" meta={money(data.loan.balance)} onClick={() => go('loan')} />
+          <RowLink label="Loan" meta={money(engine.loanOutstanding())} onClick={() => go('loan')} />
         )}
         {data.ekub.enabled && (
           <RowLink

@@ -74,7 +74,14 @@ export interface LoanPayment {
 export interface Loan {
   enabled: boolean;
   name: string;
+  /** The figure you last confirmed with the lender, on `balanceAsOf`. */
   balance: number;
+  /**
+   * When `balance` was true. Payments you record after this date are
+   * subtracted from it to give today's outstanding figure. Absent on data
+   * saved before this field existed: every recorded payment then counts.
+   */
+  balanceAsOf?: ISODate;
   annualRate: number;
   autoDeductAmount: number;
   autoDeductDay: number;
@@ -251,7 +258,14 @@ export interface LoanSchedule {
   totalInterest: number;
   totalPaid: number;
   monthsRemaining: number;
+  /** What you owe today: the confirmed balance less everything you have paid since. */
   startingBalance: number;
+  /** The figure you confirmed with the lender, before your payments. */
+  confirmedBalance: number;
+  /** Payments you have recorded as already made. */
+  paidSoFar: number;
+  /** Payments you have recorded but dated in the future. */
+  plannedAhead: number;
   stalled: boolean;
 }
 
@@ -307,7 +321,15 @@ export interface BudgetRow {
   over: boolean;
 }
 
+export type AlertRoute =
+  | 'home' | 'calendar' | 'forecast' | 'loan' | 'ekub' | 'accounts'
+  | 'relocation' | 'budget' | 'inbox' | 'setup';
+
 export interface Alert {
-  level: 'danger' | 'warn' | 'good';
+  level: 'danger' | 'warn' | 'good' | 'info';
   text: string;
+  /** Where tapping it takes you, and what the button says. */
+  action?: { label: string; route: AlertRoute };
+  /** Sorts soonest-first within a level; also shown as a due chip. */
+  date?: ISODate;
 }

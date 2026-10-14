@@ -191,6 +191,71 @@ export function runSelfTest(base?: Data): TestRun {
     return after <= basePayoff || `${after} is not before ${basePayoff}`;
   });
 
+  check('A payment made today comes straight off what you owe', () => {
+    const before = E.loanSchedule().startingBalance;
+    const d = clone();
+    d.loan.manualPayments = [...d.loan.manualPayments, { id: 'paid-now', date: asOf, amount: 2000 }];
+    const after = makeEngine(d).loanSchedule();
+    return near(after.startingBalance, before - 2000)
+      || `owed ${before}, paid 2000, now shows ${after.startingBalance}`;
+  });
+
+  check('A payment already made is not also counted as money still owed', () => {
+    const d = clone();
+    d.loan.manualPayments = [...d.loan.manualPayments, { id: 'paid-now2', date: asOf, amount: 2000 }];
+    const E2 = makeEngine(d);
+    const dueAgain = E2.commitments(asOf, addDaysISO(asOf, 45)).filter(c => c.id === 'loan-paid-now2');
+    return dueAgain.length === 0 || 'a payment that has happened was still listed as due';
+  });
+
+  check('A payment dated in the future is owed until that day, then comes off', () => {
+    const d = clone();
+    const later = addDaysISO(asOf, 10);
+    d.loan.manualPayments = [...d.loan.manualPayments, { id: 'planned', date: later, amount: 2000 }];
+    const E2 = makeEngine(d);
+    const owedNow = near(E2.loanSchedule().startingBalance, E.loanSchedule().startingBalance);
+    const listed = E2.commitments(asOf, addDaysISO(asOf, 45)).some(c => c.id === 'loan-planned');
+    if (!owedNow) return 'a future payment reduced the balance before it was made';
+    return listed || 'a scheduled payment was not counted as money still owed';
+  });
+
+  check('Paying it off in full leaves nothing owed and nothing scheduled', () => {
+    const d = clone();
+    const owed = E.loanSchedule().startingBalance;
+    d.loan.manualPayments = [...d.loan.manualPayments, { id: 'clear', date: asOf, amount: owed }];
+    const L = makeEngine(d).loanSchedule();
+    return (near(L.startingBalance, 0) && L.rows.length === 0)
+      || `balance ${L.startingBalance} with ${L.rows.length} rows left`;
+  });
+
+  check('Every screen reads the same loan figure', () => {
+    const d = clone();
+    d.loan.manualPayments = [...d.loan.manualPayments, { id: 'one', date: asOf, amount: 1500 }];
+    const E2 = makeEngine(d);
+    return near(E2.loanOutstanding(), E2.loanSchedule().startingBalance)
+      || 'loanOutstanding() and the schedule disagree';
+  });
+
+  check('Payments made before the confirmed balance date are not subtracted twice', () => {
+    const d = clone();
+    d.loan.balanceAsOf = asOf;
+    d.loan.manualPayments = [{ id: 'old', date: addDaysISO(asOf, -30), amount: 5000 }];
+    const L = makeEngine(d).loanSchedule();
+    return near(L.startingBalance, d.loan.balance)
+      || `a payment older than the confirmed figure changed it to ${L.startingBalance}`;
+  });
+
+  check('The attention list points at a screen for every item', () => {
+    const bad = E.alerts().filter(a => a.action && !a.action.route);
+    return bad.length === 0 || `${bad.length} alerts have no destination`;
+  });
+
+  check('The attention list tells you what is coming, not only what is wrong', () => {
+    const a = E.alerts();
+    return a.some(x => x.level === 'info' || x.level === 'good')
+      || 'nothing forward-looking in the attention list';
+  });
+
   check('A disabled loan contributes nothing', () => {
     const d = clone();
     d.loan.enabled = false;

@@ -262,7 +262,10 @@ function LoanEditor({ data, update, confirm, show }: EditorProps) {
           </Field>
           <div className="grid2">
             <Field label="Outstanding balance">
-              <NumberInput value={L.balance} onChange={v => set({ balance: v })} />
+              <NumberInput
+                value={L.balance}
+                onChange={v => set({ balance: v, balanceAsOf: data.meta.asOf })}
+              />
             </Field>
             <Field label="Interest rate (% a year)">
               <NumberInput value={L.annualRate * 100} onChange={v => set({ annualRate: v / 100 })} />
@@ -283,6 +286,10 @@ function LoanEditor({ data, update, confirm, show }: EditorProps) {
           />
           <div className="muted" style={{ fontSize: 12.5 }}>
             A company loan is often 0%. If yours is, leave the rate at zero.
+            {(L.manualPayments || []).length > 0 && (
+              <> Payments you record are taken off this figure, so enter what the lender
+              says you owe{L.balanceAsOf ? ` as of ${L.balanceAsOf}` : ' today'} — not what is left after your own payments.</>
+            )}
           </div>
         </>
       )}
