@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store';
 import {
   loadConfig, saveConfig, resetClient, signIn, signUp, describeSync,
-  takeAuthRedirectError,
+  takeAuthRedirectError, testConnection, makeSetupLink, readSetupLink, clearSetupLink,
+  type ConnectionTest, type SupabaseConfig,
 } from '../lib/sync';
 import { money } from '../lib/engine';
 import { Card, Field, useToast } from '../components/ui';
@@ -23,14 +24,58 @@ export default function Account() {
   const [err, setErr] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [linkErr, setLinkErr] = useState<string | null>(null);
+  const [test, setTest] = useState<ConnectionTest | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [offered, setOffered] = useState<SupabaseConfig | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
 
   // A bounced confirmation / reset link leaves its reason in the URL.
   useEffect(() => { setLinkErr(takeAuthRedirectError()); }, []);
+  // Settings handed over from another device.
+  useEffect(() => { setOffered(readSetupLink()); }, []);
+
+  async function runTest() {
+    setTesting(true);
+    setTest(await testConnection());
+    setTesting(false);
+  }
+
+  const acceptOffered = async () => {
+    if (!offered) return;
+    saveConfig(offered);
+    resetClient();
+    clearSetupLink();
+    setOffered(null);
+    await refreshAuth();
+    show('Settings applied');
+  };
+
+  const offerBanner = offered && (
+    <div className="card" style={{ borderLeft: '4px solid var(--series-1)' }}>
+      <h2>Settings from another device</h2>
+      <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 0 }}>
+        This link sets this device up to use:
+      </p>
+      <div style={{ fontSize: 13, wordBreak: 'break-all', fontWeight: 600, marginBottom: 12 }}>
+        {offered.url}
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 0 }}>
+        Only accept this if you made the link yourself. It decides where your figures are stored.
+      </p>
+      <div className="btnrow">
+        <button className="btn primary" onClick={() => void acceptOffered()}>Use these settings</button>
+        <button className="btn ghost" onClick={() => { clearSetupLink(); setOffered(null); }}>
+          Ignore
+        </button>
+      </div>
+    </div>
+  );
 
   /* ---------- 1. not set up on this device ---------- */
   if (!syncConfigured) {
     return (
       <>
+        {offerBanner}
         <Card title="Use Birr on more than one device">
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 0 }}>
             Right now everything lives on this device only. Connecting an account lets your
@@ -79,6 +124,7 @@ export default function Account() {
   if (!session) {
     return (
       <>
+        {offerBanner}
         <Card title={mode === 'in' ? 'Sign in' : 'Create your account'}>
           {linkErr && (
             <div className="alert warn"><span className="ico">△</span><span>{linkErr}</span></div>
@@ -119,7 +165,15 @@ export default function Account() {
             <button className="btn ghost" onClick={() => { setMode(m => (m === 'in' ? 'up' : 'in')); setErr(null); }}>
               {mode === 'in' ? 'I need an account' : 'I already have one'}
             </button>
+            <button className="btn ghost" disabled={testing} onClick={() => void runTest()}>
+              {testing ? 'Testing…' : 'Test connection'}
+            </button>
           </div>
+          {test && (
+            <div className={`alert ${test.ok ? 'good' : 'warn'}`} style={{ marginTop: 10 }}>
+              <span className="ico">{test.ok ? '✓' : '△'}</span><span>{test.message}</span>
+            </div>
+          )}
           <div className="muted" style={{ fontSize: 12.5, marginTop: 12 }}>
             Password must be at least 6 characters. Use the same account on your computer
             and both will hold the same figures.
@@ -219,6 +273,45 @@ export default function Account() {
           <button className="btn ghost" disabled={busy} onClick={() => void signOutEverywhere()}>
             Sign out
           </button>
+        </div>
+      </Card>
+
+      <Card title="Set up another device">
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 0 }}>
+          Rather than typing that long key again, make a link and open it on the other
+          device. It fills in the settings; you still sign in there yourself.
+        </p>
+        <div className="btnrow">
+          <button className="btn" onClick={() => setShareLink(makeSetupLink())}>
+            {shareLink ? 'Hide link' : 'Make a setup link'}
+          </button>
+          {shareLink && (
+            <button
+              className="btn"
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(shareLink); show('Copied'); }
+                catch { show('Select the text and copy it by hand'); }
+              }}
+            >Copy</button>
+          )}
+          <button className="btn ghost" disabled={testing} onClick={() => void runTest()}>
+            {testing ? 'Testing…' : 'Test connection'}
+          </button>
+        </div>
+        {shareLink && (
+          <textarea
+            readOnly value={shareLink} onFocus={e => e.currentTarget.select()}
+            style={{ marginTop: 10, minHeight: 90, fontSize: 12 }}
+          />
+        )}
+        {test && (
+          <div className={`alert ${test.ok ? 'good' : 'warn'}`} style={{ marginTop: 10 }}>
+            <span className="ico">{test.ok ? '✓' : '△'}</span><span>{test.message}</span>
+          </div>
+        )}
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+          Send it to yourself however you like. It carries the project address and the
+          publishable key — never your password, and never your figures.
         </div>
       </Card>
 

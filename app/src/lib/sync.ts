@@ -115,8 +115,12 @@ const TABLE = 'ledgers';
 
 function friendly(message: string): string {
   const m = message.toLowerCase();
-  if (m.includes('failed to fetch') || m.includes('network'))
-    return 'No connection. Your work is saved on this device and will go up when you are back online.';
+  // Safari says "Load failed" where Chrome says "Failed to fetch". Both mean
+  // the request never arrived — usually a mistyped project URL or key on this
+  // device, not a problem with the account.
+  if (m.includes('failed to fetch') || m.includes('load failed') || m.includes('network'))
+    return 'Could not reach your project from this device. Either you are offline, or the '
+      + 'project URL or key saved here is wrong. Use "Test connection" below to find out which.';
   if (m.includes('relation') && m.includes('does not exist'))
     return 'The database is not set up yet — supabase-setup.sql has not been run on this project.';
   if (m.includes('email not confirmed'))
@@ -224,6 +228,106 @@ export function planSync(
   }
 
   return dirty ? { action: 'push', basedOnRev: localRev } : { action: 'idle' };
+}
+
+/* ============================================================
+   Diagnosing a device that cannot reach the project.
+   Asks the project a question that needs the URL, the key AND the
+   table to all be right, then reports which one is not.
+   ============================================================ */
+export interface ConnectionTest {
+  ok: boolean;
+  message: string;
+}
+
+export async function testConnection(): Promise<ConnectionTest> {
+  const cfg = loadConfig();
+  if (!cfg) return { ok: false, message: 'No project is saved on this device yet.' };
+
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)\/?$/i.test(cfg.url.trim())) {
+    return {
+      ok: false,
+      message: `The project URL does not look right: "${cfg.url}". It should be exactly like `
+        + 'https://abcdefgh.supabase.co — no trailing path, no spaces.',
+    };
+  }
+
+  const base = cfg.url.trim().replace(/\/$/, '');
+  let res: Response;
+  try {
+    res = await fetch(`${base}/rest/v1/ledgers?select=user_id&limit=1`, {
+      headers: { apikey: cfg.anonKey, Authorization: `Bearer ${cfg.anonKey}` },
+    });
+  } catch {
+    return {
+      ok: false,
+      message: 'Could not reach that address at all. Check this device is online, and that the '
+        + 'project URL was copied in full — a single missing character does exactly this.',
+    };
+  }
+
+  if (res.status === 401 || res.status === 403) {
+    const body = await res.text().catch(() => '');
+    if (/invalid api key|jwt/i.test(body)) {
+      return {
+        ok: false,
+        message: 'The address is right but the key is not. Copy the anon key again — it is long, '
+          + 'and phone keyboards often clip the end or add a space.',
+      };
+    }
+    return { ok: true, message: 'Reached the project. Sign in to go further.' };
+  }
+
+  if (res.status === 404) {
+    return {
+      ok: false,
+      message: 'Reached the project, but the ledgers table is missing. Run supabase-setup.sql in '
+        + "the project's SQL editor.",
+    };
+  }
+
+  if (!res.ok) {
+    return { ok: false, message: `The project answered with an error (${res.status}).` };
+  }
+
+  return { ok: true, message: 'Everything checks out — URL, key and table are all good.' };
+}
+
+/* ---------- moving the settings to another device ----------
+   Typing a long key on a phone is how this goes wrong. The configured
+   device makes a link instead; the other one opens it. The anon key is
+   publishable, so carrying it in a link is no worse than it being in
+   the app already. */
+export function makeSetupLink(): string | null {
+  const cfg = loadConfig();
+  if (!cfg) return null;
+  const payload = btoa(JSON.stringify(cfg))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const base = window.location.origin + window.location.pathname;
+  return `${base}?cfg=${payload}`;
+}
+
+/** Reads a setup link, if this page was opened with one. Does not apply it —
+ *  the person is shown which project it names and confirms first. */
+export function readSetupLink(): SupabaseConfig | null {
+  if (typeof window === 'undefined') return null;
+  const raw = new URLSearchParams(window.location.search).get('cfg');
+  if (!raw) return null;
+  try {
+    const json = atob(raw.replace(/-/g, '+').replace(/_/g, '/'));
+    const cfg = JSON.parse(json) as SupabaseConfig;
+    if (!cfg?.url || !cfg?.anonKey) return null;
+    return cfg;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSetupLink(): void {
+  if (typeof window === 'undefined') return;
+  const u = new URL(window.location.href);
+  u.searchParams.delete('cfg');
+  window.history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
 }
 
 /* Supabase sends people back from a confirmation or reset email with the
