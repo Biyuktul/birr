@@ -1,6 +1,7 @@
 import { useStore } from '../lib/store';
 import { money, fmtDate, addDaysISO, daysBetween } from '../lib/engine';
 import { uid } from '../lib/defaults';
+import { payEkubRound } from '../lib/actions';
 import { Card, useToast } from '../components/ui';
 import type { Commitment, IncomeOccurrence } from '../lib/types';
 
@@ -22,6 +23,15 @@ export default function CalendarScreen() {
   ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
   function markPaid(c: Commitment) {
+    // An Ekub round is not a generic bill: settling it must also advance the
+    // cycle, or this tab and the Ekub screen end up disagreeing about which
+    // round is next. One shared path keeps them in step.
+    if (c.kind === 'ekub') {
+      const round = engine.ekubStatus().nextRound;
+      update(d => payEkubRound(d, { round, date: c.date, amount: c.amount }));
+      show(`Ekub round ${round} marked paid`);
+      return;
+    }
     update(d => ({
       ...d,
       paid: { ...d.paid, [c.key]: true },

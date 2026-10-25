@@ -229,15 +229,30 @@ export function makeEngine(data: Data) {
     return iso(dateOnDay(m.getFullYear(), m.getMonth(), E.dayOfMonth));
   }
 
+  /** What a given round costs — the usual amount unless that round recorded
+   *  something different. */
+  function ekubAmountFor(round: number): number {
+    const rec = (data.ekub.contributionsPaid || []).find(c => c.round === round);
+    return rec?.amount ?? data.ekub.contributionAmount;
+  }
+
   function ekubStatus(): EkubStatus {
     const E = data.ekub;
     const paid = [...(E.contributionsPaid || [])].sort((a, b) => a.round - b.round);
     const paidCount = paid.length;
     const payoutAmount = round2(E.contributionAmount * E.totalMembers);
-    const nextRound = paidCount + 1;
+    // the first round with nothing recorded against it, not simply "count + 1",
+    // so rounds paid out of order still work
+    const nextRound = (() => {
+      for (let i = 1; i <= E.totalMembers; i++) {
+        if (!paid.some(c => c.round === i)) return i;
+      }
+      return E.totalMembers + 1;
+    })();
     const nextDue = nextRound <= E.totalMembers ? ekubRoundDate(nextRound) : null;
     const payoutDate = ekubRoundDate(E.myPayoutRound);
-    const contributedSoFar = round2(E.contributionAmount * paidCount);
+    // what actually left your pocket, not the nominal amount times the count
+    const contributedSoFar = round2(paid.reduce((t, c) => t + (c.amount ?? E.contributionAmount), 0));
     const contributedByPayout = round2(E.contributionAmount * E.myPayoutRound);
 
     return {
@@ -278,7 +293,7 @@ export function makeEngine(data: Data) {
       if (es.nextDue) {
         raw.push({
           id: 'ekub', key: `ekub@${es.nextDue}`, name: `Ekub round ${es.nextRound}`,
-          amount: data.ekub.contributionAmount, accountId: data.ekub.accountId,
+          amount: ekubAmountFor(es.nextRound), accountId: data.ekub.accountId,
           category: 'Ekub', date: es.nextDue, kind: 'ekub', essential: true, overdue: false,
         });
       }
@@ -447,6 +462,7 @@ export function makeEngine(data: Data) {
     const out: Record<string, number> = {};
     for (const t of data.transactions) {
       if (t.isTransfer) continue;
+      if (t.isAdjustment) continue;                 // a correction is not spending
       if (t.amount >= 0) continue;                  // credits are not spending
       if (monthKey(t.date) !== mk) continue;
       const c = t.category || 'Other';
@@ -613,7 +629,7 @@ export function makeEngine(data: Data) {
   return {
     data, asOf, accountById, activeAccounts,
     accountBalance, combinedBalance, reconcile,
-    loanSchedule, loanOutstanding, loanPayments, ekubStatus, ekubRoundDate,
+    loanSchedule, loanOutstanding, loanPayments, ekubStatus, ekubRoundDate, ekubAmountFor,
     commitments, incomeOccurrences,
     safeToSpend, forecast, relocation,
     spendingByCategory, budgetStatus, alerts,

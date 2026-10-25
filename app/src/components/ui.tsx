@@ -14,16 +14,27 @@ export function Card({ title, sub, children }: {
   );
 }
 
-export function Tile({ label, value, note, color, small }: {
+export function Tile({ label, value, note, color, small, onClick }: {
   label: string; value: React.ReactNode; note?: React.ReactNode;
   color?: string; small?: boolean;
+  /** Makes the whole tile a button — used where the figure opens its detail. */
+  onClick?: () => void;
 }) {
-  return (
-    <div className="tile">
-      <div className="label">{label}</div>
+  const inner = (
+    <>
+      <div className="label">
+        {label}
+        {onClick && <span className="chev" style={{ float: 'right', fontWeight: 400 }}>›</span>}
+      </div>
       <div className={small ? 'value sm' : 'value'} style={color ? { color } : undefined}>{value}</div>
       {note && <div className="note">{note}</div>}
-    </div>
+    </>
+  );
+  if (!onClick) return <div className="tile">{inner}</div>;
+  return (
+    <button type="button" className="tile tile-button" onClick={onClick}>
+      {inner}
+    </button>
   );
 }
 

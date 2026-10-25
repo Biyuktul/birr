@@ -93,6 +93,10 @@ export interface Loan {
 export interface EkubContribution {
   round: number;
   date: ISODate;
+  /** What was actually handed over, if it differed from the usual amount. */
+  amount?: number;
+  /** The money movement this created, so unmarking can undo it exactly. */
+  transactionId?: string;
 }
 
 export interface Ekub {
@@ -139,6 +143,12 @@ export interface Txn {
   source: 'manual' | 'sms' | 'calendar' | 'import';
   statedBalance?: number | null;
   externalRef?: string | null;
+  /**
+   * A correction that brings an account to a balance you confirmed, rather
+   * than money you spent. Kept out of spending so a correction can never
+   * masquerade as groceries.
+   */
+  isAdjustment?: boolean;
 }
 
 export interface ParsedMessage {

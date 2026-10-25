@@ -19,7 +19,8 @@ export default function Home({ go }: { go: (r: Route) => void }) {
         <Tile
           label="Everything you have"
           value={<span className="hero">{money(bal)}</span>}
-          note={`Across ${engine.activeAccounts.length} accounts`}
+          note={`Across ${engine.activeAccounts.length} accounts — tap to see where it sits`}
+          onClick={() => go('accounts')}
         />
         <Tile
           label="Safe to spend"
