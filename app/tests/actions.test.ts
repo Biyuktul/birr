@@ -325,7 +325,17 @@ describe('messages waiting to be confirmed', () => {
   it('do not touch any balance until confirmed', () => {
     const d0 = fresh();
     const before = total(d0);
-    const d1 = { ...d0, inbox: [{ ...({} as never) }] } as typeof d0;
-    expect(total(d1)).toBe(before);
+    const d1: Data = {
+      ...d0,
+      inbox: [{
+        id: 'm2', raw: 'debited with ETB 9999', sender: 'CBE', provider: 'CBE',
+        providerLabel: 'CBE', direction: 'debit', amount: 9999, signedAmount: -9999,
+        statedBalance: null, counterparty: null, accountDigits: null, accountId: 'cbe',
+        category: null, date: '2026-10-25', ref: null, looksLikeTransfer: false,
+        confidence: 0.9, missing: [], needsReview: false,
+      }],
+    };
+    expect(total(d1)).toBe(before);           // a pending message moves nothing
+    expect(d1.transactions).toEqual(d0.transactions);
   });
 });
