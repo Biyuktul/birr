@@ -124,8 +124,11 @@ export function makeEngine(data: Data) {
   function loanPayments() {
     const L = data.loan;
     const since = L.balanceAsOf || null;
+    // On or after the confirmation date. Confirming "you owe 78,557 today" and
+    // then paying 5,000 today must reduce it — using "strictly after" silently
+    // swallowed same-day payments, which is the usual case.
     const counts = (p: { date: ISODate }) =>
-      since == null ? true : cmp(p.date, since) > 0;   // already inside the confirmed figure otherwise
+      since == null ? true : cmp(p.date, since) >= 0;
     let paidSoFar = 0, plannedAhead = 0;
     for (const p of L.manualPayments || []) {
       if (!counts(p)) continue;

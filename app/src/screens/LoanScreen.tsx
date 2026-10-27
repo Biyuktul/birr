@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../lib/store';
 import { money, fmtDateFull, fmtMonth } from '../lib/engine';
-import { uid } from '../lib/defaults';
+import { payLoan, unpayLoan } from '../lib/actions';
 import { Card, Tile, Field, NumberInput, useToast } from '../components/ui';
 
 export default function LoanScreen() {
@@ -9,6 +9,7 @@ export default function LoanScreen() {
   const { toast, show } = useToast();
   const [date, setDate] = useState(engine.asOf);
   const [amount, setAmount] = useState(0);
+  const [fromAccount, setFromAccount] = useState(data.loan.accountId);
 
   const L = engine.loanSchedule();
 
@@ -18,25 +19,20 @@ export default function LoanScreen() {
       show(`That is more than you owe. The balance is ${money(L.startingBalance)}.`);
       return;
     }
-    update(d => ({
-      ...d,
-      loan: { ...d.loan, manualPayments: [...d.loan.manualPayments, { id: uid('p'), date, amount }] },
-    }));
+    update(d => payLoan(d, { date, amount, accountId: fromAccount }));
     const future = date > engine.asOf;
+    const acct = engine.accountById[fromAccount]?.name ?? 'the account';
     show(future
-      ? `Scheduled ${money(amount)} for ${fmtDateFull(date)}. It comes off the balance on the day.`
-      : `Paid ${money(amount)}. The loan is now ${money(L.startingBalance - amount)}.`);
+      ? `Scheduled ${money(amount)} for ${fmtDateFull(date)}. It leaves ${acct} on the day.`
+      : `Paid ${money(amount)} out of ${acct}. You now owe ${money(L.startingBalance - amount)}.`);
     setAmount(0);
   }
 
   function removePayment(id: string) {
     const p = data.loan.manualPayments.find(x => x.id === id);
-    update(d => ({
-      ...d,
-      loan: { ...d.loan, manualPayments: d.loan.manualPayments.filter(x => x.id !== id) },
-    }));
+    update(d => unpayLoan(d, id));
     show(p && p.date <= engine.asOf
-      ? `Removed. The loan goes back to ${money(L.startingBalance + p.amount)}.`
+      ? `Removed. You owe ${money(L.startingBalance + p.amount)} again, and the money is back.`
       : 'Removed.');
   }
 
@@ -79,6 +75,15 @@ export default function LoanScreen() {
           <Field label="Date"><input type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
           <Field label="Amount"><NumberInput value={amount} onChange={setAmount} min={0} /></Field>
         </div>
+        <Field label="Paid out of">
+          <select value={fromAccount} onChange={e => setFromAccount(e.target.value)}>
+            {engine.activeAccounts.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.name} — {money(engine.accountBalance(a.id))}
+              </option>
+            ))}
+          </select>
+        </Field>
         <div className="btnrow" style={{ marginBottom: 10 }}>
           {[1000, 2000, 5000, 12000].map(v => (
             <button key={v} className="btn ghost sm" onClick={() => setAmount(v)}>{money(v)}</button>
@@ -91,8 +96,10 @@ export default function LoanScreen() {
           {amount > 0 ? <>Pay {money(amount)} — balance becomes {money(Math.max(0, L.startingBalance - amount))}</> : 'Record payment'}
         </button>
         <div className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
-          Dated today or earlier it comes off the balance straight away, everywhere in the app.
-          Dated in the future it is money set aside, and Birr counts it as still owed until that day.
+          Dated today or earlier, it comes off what you owe <em>and</em> out of{' '}
+          {engine.accountById[fromAccount]?.name ?? 'the account'} straight away, everywhere in
+          the app. Dated in the future it is money set aside: still owed, and still in the
+          account, until that day.
         </div>
 
         {data.loan.manualPayments.length > 0 && (
@@ -101,7 +108,10 @@ export default function LoanScreen() {
               <div className="item" key={p.id}>
                 <div className="nm">
                   {fmtDateFull(p.date)}
-                  <small>{p.date <= engine.asOf ? 'paid — off the balance' : 'scheduled — still owed'}</small>
+                  <small>
+                    {p.date <= engine.asOf ? 'paid — off the balance' : 'scheduled — still owed'}
+                    {p.accountId && <> · from {engine.accountById[p.accountId]?.name ?? p.accountId}</>}
+                  </small>
                 </div>
                 <div className="amt">{money(p.amount)}</div>
                 <button className="btn ghost sm" onClick={() => removePayment(p.id)}>remove</button>

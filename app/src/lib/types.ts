@@ -69,6 +69,10 @@ export interface LoanPayment {
   date: ISODate;
   amount: number;
   note?: string;
+  /** Which account it came out of. Falls back to the loan's own account. */
+  accountId?: string;
+  /** The money movement it created, so removing it undoes that too. */
+  transactionId?: string;
 }
 
 export interface Loan {

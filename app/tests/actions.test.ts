@@ -3,6 +3,7 @@ import { makeDefaultData } from '../src/lib/defaults';
 import { makeEngine } from '../src/lib/engine';
 import {
   payEkubRound, unpayEkubRound, setEkubRoundAmount, setEkubRoundDate, setAccountBalance,
+  payLoan, unpayLoan,
 } from '../src/lib/actions';
 import type { Data } from '../src/lib/types';
 
@@ -191,5 +192,113 @@ describe('correcting an account balance', () => {
   it('ignores an account that does not exist', () => {
     const d0 = fresh();
     expect(setAccountBalance(d0, 'nope', 999)).toBe(d0);
+  });
+});
+
+describe('recording a loan payment', () => {
+  /** Balance confirmed today, which is what Setup records when you edit it. */
+  function withLoan(): Data {
+    const d = fresh();
+    d.loan.balance = 78557;
+    d.loan.balanceAsOf = '2026-10-25';
+    d.loan.manualPayments = [];
+    d.loan.accountId = 'cbe';
+    return d;
+  }
+  const owed = (d: Data) => makeEngine(d).loanOutstanding();
+
+  it('a payment made the same day the balance was confirmed still counts', () => {
+    // the regression: "strictly after" swallowed same-day payments, which is
+    // the ordinary case — you check the balance and pay it the same day
+    const d0 = withLoan();
+    const d1 = payLoan(d0, { date: '2026-10-25', amount: 5000 });
+    expect(owed(d1)).toBe(owed(d0) - 5000);
+  });
+
+  it('takes the money out of the account it was paid from', () => {
+    const d0 = withLoan();
+    const before = bal(d0, 'cbe');
+    const d1 = payLoan(d0, { date: '2026-10-25', amount: 5000 });
+    expect(bal(d1, 'cbe')).toBe(before - 5000);
+  });
+
+  it('comes off "everything you have" as well as off the debt', () => {
+    const d0 = withLoan();
+    const beforeTotal = total(d0);
+    const d1 = payLoan(d0, { date: '2026-10-25', amount: 5000 });
+    expect(total(d1)).toBe(beforeTotal - 5000);
+    expect(owed(d1)).toBe(73557);
+  });
+
+  it('can be paid from any account, not only the loan default', () => {
+    const d0 = withLoan();
+    const before = bal(d0, 'telebirr');
+    const d1 = payLoan(d0, { date: '2026-10-25', amount: 400, accountId: 'telebirr' });
+    expect(bal(d1, 'telebirr')).toBe(before - 400);
+    expect(bal(d1, 'cbe')).toBe(bal(d0, 'cbe'));
+  });
+
+  it('every screen reads the same reduced figure', () => {
+    const d1 = payLoan(withLoan(), { date: '2026-10-25', amount: 5000 });
+    const e = makeEngine(d1);
+    expect(e.loanSchedule().startingBalance).toBe(e.loanOutstanding());
+  });
+
+  it('a future-dated payment is still owed, and still in the account, until the day', () => {
+    const d0 = withLoan();
+    const beforeBank = bal(d0, 'cbe');
+    const d1 = payLoan(d0, { date: '2026-12-01', amount: 5000 });
+    expect(owed(d1)).toBe(owed(d0));          // not yet off the debt
+    expect(bal(d1, 'cbe')).toBe(beforeBank);  // not yet out of the bank
+    expect(makeEngine(d1).loanPayments().plannedAhead).toBe(5000);
+  });
+
+  it('a payment before the confirmed date is not subtracted twice', () => {
+    const d0 = withLoan();
+    const d1 = payLoan(d0, { date: '2026-10-01', amount: 5000 });   // before balanceAsOf
+    expect(owed(d1)).toBe(owed(d0));
+  });
+
+  it('several payments add up', () => {
+    let d = withLoan();
+    d = payLoan(d, { date: '2026-10-25', amount: 1000 });
+    d = payLoan(d, { date: '2026-10-25', amount: 2500 });
+    expect(owed(d)).toBe(78557 - 3500);
+  });
+
+  it('a payment dated tomorrow is not counted as paid yet', () => {
+    const d0 = withLoan();
+    const d1 = payLoan(d0, { date: '2026-10-26', amount: 2500 });   // asOf is the 25th
+    expect(owed(d1)).toBe(owed(d0));
+    expect(makeEngine(d1).loanPayments().plannedAhead).toBe(2500);
+  });
+
+  it('undoing puts it back on the debt and back in the account', () => {
+    const d0 = withLoan();
+    const bankBefore = bal(d0, 'cbe');
+    const d1 = payLoan(d0, { date: '2026-10-25', amount: 5000 });
+    const id = d1.loan.manualPayments.at(-1)!.id;
+    const d2 = unpayLoan(d1, id);
+    expect(owed(d2)).toBe(owed(d0));
+    expect(bal(d2, 'cbe')).toBe(bankBefore);
+    expect(d2.loan.manualPayments).toHaveLength(0);
+  });
+
+  it('leaves payments recorded before money movement existed alone', () => {
+    const d0 = withLoan();
+    d0.loan.manualPayments = [{ id: 'old', date: '2026-10-25', amount: 5000 }];
+    const txBefore = d0.transactions.length;
+    const d1 = unpayLoan(d0, 'old');
+    expect(d1.transactions.length).toBe(txBefore);
+    expect(d1.loan.manualPayments).toHaveLength(0);
+  });
+
+  it('refuses a zero, negative or nonsense amount instead of guessing', () => {
+    const d0 = withLoan();
+    for (const bad of [0, -100, NaN]) {
+      const r = payLoan(d0, { date: '2026-10-25', amount: bad });
+      expect(r.loan.manualPayments).toHaveLength(0);
+      expect(r.transactions.length).toBe(d0.transactions.length);
+    }
   });
 });

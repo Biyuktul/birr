@@ -29,7 +29,9 @@ export function payEkubRound(d: Data, input: PayRoundInput): Data {
   if (round < 1) return d;
   if ((d.ekub.contributionsPaid || []).some(c => c.round === round)) return d;  // already paid
 
-  const amount = round2(input.amount ?? d.ekub.contributionAmount);
+  const requested = input.amount ?? d.ekub.contributionAmount;
+  if (!Number.isFinite(requested) || requested <= 0) return d;
+  const amount = round2(requested);
   const txId = uid('t');
 
   const tx: Txn = {
@@ -149,5 +151,73 @@ export function setAccountBalance(
     ...d,
     transactions: [...d.transactions, tx],
     recon: { ...d.recon, [accountId]: round2(actual) },
+  };
+}
+
+/* ---------- loan ---------- */
+
+export interface PayLoanInput {
+  date: ISODate;
+  amount: number;
+  /** Where the money came from. Defaults to the loan's own account. */
+  accountId?: string;
+  note?: string;
+}
+
+/**
+ * Record a loan payment: it comes off what you owe AND out of the account it
+ * was paid from. Recording only the first left the loan smaller while the
+ * money was still sitting in the bank.
+ *
+ * A payment dated in the future is recorded as scheduled — the engine only
+ * counts transactions up to today, so it leaves the balance alone until then.
+ */
+export function payLoan(d: Data, input: PayLoanInput): Data {
+  // Check the sign of what was actually passed. Taking the absolute value
+  // first would turn a mistyped -100 into a real 100 payment.
+  if (!Number.isFinite(input.amount) || input.amount <= 0) return d;
+  const amount = round2(input.amount);
+
+  const accountId = input.accountId || d.loan.accountId;
+  const txId = uid('t');
+
+  const tx: Txn = {
+    id: txId,
+    date: input.date,
+    accountId,
+    amount: -amount,
+    category: 'Debt',
+    note: input.note || `${d.loan.name} payment`,
+    isTransfer: false,
+    source: 'manual',
+  };
+
+  return {
+    ...d,
+    transactions: [...d.transactions, tx],
+    loan: {
+      ...d.loan,
+      manualPayments: [
+        ...d.loan.manualPayments,
+        { id: uid('p'), date: input.date, amount, accountId, transactionId: txId, note: input.note },
+      ],
+    },
+  };
+}
+
+/** Undo a loan payment: it goes back onto the debt and back into the account. */
+export function unpayLoan(d: Data, paymentId: string): Data {
+  const p = (d.loan.manualPayments || []).find(x => x.id === paymentId);
+  if (!p) return d;
+  return {
+    ...d,
+    // Payments recorded before this carried no money movement; nothing to undo.
+    transactions: p.transactionId
+      ? d.transactions.filter(t => t.id !== p.transactionId)
+      : d.transactions,
+    loan: {
+      ...d.loan,
+      manualPayments: d.loan.manualPayments.filter(x => x.id !== paymentId),
+    },
   };
 }
