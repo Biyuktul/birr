@@ -282,7 +282,12 @@ input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; flex: 0 0 aut
 /* ---------- chart ---------- */
 .chart-shell { position: relative; overflow-x: auto; overflow-y: hidden; }
 svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
-@media (max-width: 620px) { svg.chart { min-width: 560px; } }
+@media (max-width: 620px) {
+  /* The forecast's many-day line needs room and scrolls sideways. A bar
+     chart must not: its newest bar is the point, and a scrollbar hides it. */
+  svg.chart:not(.chart-fit) { min-width: 560px; }
+}
+svg.chart.chart-fit { min-width: 0; width: 100%; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; font-size: 12.5px; color: var(--text-secondary); }
 .legend .key { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }

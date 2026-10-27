@@ -8,7 +8,7 @@ import type {
   Data, ISODate, Schedule, Commitment, IncomeOccurrence, SafeToSpend,
   Forecast, ForecastDay, Scenario, LoanSchedule, LoanRow, EkubStatus,
   RelocationResult, Reconciliation, BudgetRow, Alert, Account,
-  LendingStatus, LendingItem,
+  LendingStatus, LendingItem, Granularity, PeriodSpend, CategorySpend, SpendingReport,
 } from './types';
 
 /* ---------- dates: local time, never UTC-shifted ---------- */
@@ -508,15 +508,149 @@ export function makeEngine(data: Data) {
   }
 
   /* ============================================================
+     WHAT YOU HAVE ACTUALLY SPENT
+     Read from recorded transactions only — this is history, not the
+     plan. Transfers between your own accounts, balance corrections
+     and money lent out are all excluded: none of them is spending.
+     ============================================================ */
+  function isSpending(t: { amount: number; isTransfer?: boolean; isAdjustment?: boolean; isLending?: boolean }): boolean {
+    return t.amount < 0 && !t.isTransfer && !t.isAdjustment && !t.isLending;
+  }
+
+  /** Monday of the week containing the date. */
+  function weekStart(d: ISODate): ISODate {
+    const x = D(d);
+    const shift = (x.getDay() + 6) % 7;          // Monday = 0
+    return addDaysISO(d, -shift);
+  }
+
+  function periodOf(g: Granularity, d: ISODate): { from: ISODate; to: ISODate } {
+    if (g === 'day') return { from: d, to: d };
+    if (g === 'week') {
+      const from = weekStart(d);
+      return { from, to: addDaysISO(from, 6) };
+    }
+    const x = D(d);
+    const from = iso(new Date(x.getFullYear(), x.getMonth(), 1));
+    const to = iso(new Date(x.getFullYear(), x.getMonth() + 1, 0));
+    return { from, to };
+  }
+
+  function stepBack(g: Granularity, d: ISODate, n: number): ISODate {
+    if (g === 'day') return addDaysISO(d, -n);
+    if (g === 'week') return addDaysISO(d, -7 * n);
+    const x = D(d);
+    return iso(new Date(x.getFullYear(), x.getMonth() - n, 1));
+  }
+
+  function labelFor(g: Granularity, from: ISODate): { label: string; longLabel: string } {
+    const d = D(from);
+    if (g === 'day') {
+      return {
+        label: `${DOW[d.getDay()]} ${d.getDate()}`,
+        longLabel: fmtDate(from),
+      };
+    }
+    if (g === 'week') {
+      return {
+        label: `${d.getDate()} ${MON[d.getMonth()]}`,
+        longLabel: `week of ${fmtDate(from)}`,
+      };
+    }
+    return {
+      label: MON[d.getMonth()],
+      longLabel: `${MON[d.getMonth()]} ${d.getFullYear()}`,
+    };
+  }
+
+  /** Spending per period, oldest first, ending with the one containing today. */
+  function spendingOverTime(g: Granularity, count: number): PeriodSpend[] {
+    const out: PeriodSpend[] = [];
+    const todayPeriod = periodOf(g, asOf);
+
+    for (let i = count - 1; i >= 0; i--) {
+      const anchorDate = stepBack(g, todayPeriod.from, i);
+      const { from, to } = periodOf(g, anchorDate);
+      const byCategory: Record<string, number> = {};
+      let total = 0;
+
+      for (const t of data.transactions) {
+        if (!isSpending(t)) continue;
+        if (cmp(t.date, from) < 0 || cmp(t.date, to) > 0) continue;
+        const amount = Math.abs(t.amount);
+        const c = t.category || 'Other';
+        byCategory[c] = round2((byCategory[c] || 0) + amount);
+        total = round2(total + amount);
+      }
+
+      const { label, longLabel } = labelFor(g, from);
+      out.push({
+        key: from, label, longLabel, from, to, total, byCategory,
+        current: from === todayPeriod.from,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * The full picture for a granularity: every period, the one being looked
+   * at, how its categories break down, and how each category has moved.
+   */
+  function spendingReport(g: Granularity, count: number, selectedKey?: string): SpendingReport {
+    const periods = spendingOverTime(g, count);
+    const idx = selectedKey ? periods.findIndex(p => p.key === selectedKey) : -1;
+    const at = idx >= 0 ? idx : periods.length - 1;
+    const selected = periods[at];
+    const previousTotal = at > 0 ? periods[at - 1].total : 0;
+
+    const categories: CategorySpend[] = Object.keys(selected.byCategory)
+      .map(category => ({
+        category,
+        total: selected.byCategory[category],
+        share: selected.total > 0 ? selected.byCategory[category] / selected.total : 0,
+        trend: periods.map(p => p.byCategory[category] || 0),
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    const withSpend = periods.filter(p => p.total > 0);
+    return {
+      granularity: g,
+      periods,
+      selected,
+      categories,
+      previousTotal,
+      change: round2(selected.total - previousTotal),
+      average: withSpend.length
+        ? round2(withSpend.reduce((t, p) => t + p.total, 0) / withSpend.length) : 0,
+      empty: periods.every(p => p.total === 0),
+    };
+  }
+
+  /** One category, period by period — "what do the children cost me a month". */
+  function categoryOverTime(category: string, g: Granularity, count: number): PeriodSpend[] {
+    return spendingOverTime(g, count).map(p => ({
+      ...p,
+      total: p.byCategory[category] || 0,
+      byCategory: { [category]: p.byCategory[category] || 0 },
+    }));
+  }
+
+  /** Every transaction behind a figure, so any total can be opened up. */
+  function spendingIn(from: ISODate, to: ISODate, category?: string) {
+    return data.transactions
+      .filter(t => isSpending(t)
+        && cmp(t.date, from) >= 0 && cmp(t.date, to) <= 0
+        && (!category || (t.category || 'Other') === category))
+      .sort((a, b) => cmp(b.date, a.date));
+  }
+
+  /* ============================================================
      BUDGETS
      ============================================================ */
   function spendingByCategory(mk: string): Record<string, number> {
     const out: Record<string, number> = {};
     for (const t of data.transactions) {
-      if (t.isTransfer) continue;
-      if (t.isAdjustment) continue;                 // a correction is not spending
-      if (t.isLending) continue;                    // lent out, not spent — you expect it back
-      if (t.amount >= 0) continue;                  // credits are not spending
+      if (!isSpending(t)) continue;                 // one definition, used everywhere
       if (monthKey(t.date) !== mk) continue;
       const c = t.category || 'Other';
       out[c] = round2((out[c] || 0) + Math.abs(t.amount));
@@ -720,6 +854,7 @@ export function makeEngine(data: Data) {
     accountBalance, combinedBalance, reconcile,
     loanSchedule, loanOutstanding, loanPayments, ekubStatus, ekubRoundDate, ekubAmountFor,
     lendingStatus, accountForCategory, accountPurpose,
+    spendingOverTime, spendingReport, categoryOverTime, spendingIn, periodOf,
     commitments, incomeOccurrences,
     safeToSpend, forecast, relocation,
     spendingByCategory, budgetStatus, alerts,

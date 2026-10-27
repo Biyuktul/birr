@@ -17,7 +17,8 @@ export default function More({ go }: { go: (r: Route) => void }) {
           meta={`${engine.activeAccounts.length} · ${money(engine.combinedBalance())}`}
           onClick={() => go('accounts')}
         />
-        <RowLink label="Budget" meta="this month" onClick={() => go('budget')} />
+        <RowLink label="Budget" meta="caps for this month" onClick={() => go('budget')} />
+        <RowLink label="Forecast" meta="what is still to come" onClick={() => go('forecast')} />
         <RowLink
           label="Messages"
           meta={data.inbox.length > 0

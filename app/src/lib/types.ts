@@ -390,6 +390,47 @@ export interface Reconciliation {
   clean: boolean;
 }
 
+/* ---------- what you have actually spent ---------- */
+
+export type Granularity = 'day' | 'week' | 'month';
+
+export interface PeriodSpend {
+  key: string;
+  /** Short label for an axis, e.g. "Mon 27", "w/c 26 Oct", "Oct". */
+  label: string;
+  /** Fuller label for a heading, e.g. "Monday 27 October". */
+  longLabel: string;
+  from: ISODate;
+  to: ISODate;
+  total: number;
+  byCategory: Record<string, number>;
+  /** The period containing today. */
+  current: boolean;
+}
+
+export interface CategorySpend {
+  category: string;
+  total: number;
+  share: number;
+  /** Same category, one figure per period, oldest first. */
+  trend: number[];
+}
+
+export interface SpendingReport {
+  granularity: Granularity;
+  periods: PeriodSpend[];
+  /** The period being looked at — the last one unless another was picked. */
+  selected: PeriodSpend;
+  categories: CategorySpend[];
+  /** The period before the selected one, for comparison. */
+  previousTotal: number;
+  change: number;
+  /** Average across the periods shown that have any spending. */
+  average: number;
+  /** Nothing recorded at all in the window. */
+  empty: boolean;
+}
+
 export interface BudgetRow {
   category: string;
   spent: number;

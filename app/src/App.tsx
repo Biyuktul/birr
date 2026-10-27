@@ -17,11 +17,12 @@ import Setup from './screens/Setup';
 import Checks from './screens/Checks';
 import Account from './screens/Account';
 import Lending from './screens/Lending';
+import Spending from './screens/Spending';
 
 export type Route =
   | 'home' | 'calendar' | 'inbox' | 'forecast' | 'more'
   | 'accounts' | 'loan' | 'ekub' | 'relocation' | 'budget' | 'setup' | 'checks' | 'account'
-  | 'lending';
+  | 'lending' | 'spending';
 
 const TITLES: Record<Route, string> = {
   home: 'Birr',
@@ -38,12 +39,13 @@ const TITLES: Record<Route, string> = {
   checks: 'Checks',
   account: 'Account',
   lending: 'Lent out',
+  spending: 'Spending',
 };
 
 /** Screens reached from More — they get a back arrow instead of a tab. */
 const SUB: Route[] = [
   'accounts', 'loan', 'ekub', 'relocation', 'budget', 'setup', 'checks', 'account', 'inbox',
-  'lending',
+  'lending', 'forecast',
 ];
 
 const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
@@ -56,8 +58,8 @@ const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>,
   },
   {
-    route: 'forecast', label: 'Forecast',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l5-6 4 3.5L21 6" /><path d="M16 6h5v5" /></svg>,
+    route: 'spending', label: 'Spending',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>,
   },
   {
     route: 'more', label: 'More',
@@ -147,6 +149,7 @@ export default function App() {
       case 'checks': return <Checks />;
       case 'account': return <Account />;
       case 'lending': return <Lending />;
+      case 'spending': return <Spending />;
     }
   })();
 
