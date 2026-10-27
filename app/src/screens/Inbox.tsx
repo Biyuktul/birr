@@ -156,7 +156,16 @@ export default function Inbox() {
                 <select
                   value={m.category ?? ''}
                   disabled={m.looksLikeTransfer}
-                  onChange={e => patch(m.id, { category: e.target.value || null })}
+                  onChange={e => {
+                    const category = e.target.value || null;
+                    // An account set up for this kind of spending claims it,
+                    // unless the message already identified one itself.
+                    const routed = engine.accountForCategory(category);
+                    patch(m.id, {
+                      category,
+                      ...(routed && !m.accountId ? { accountId: routed } : {}),
+                    });
+                  }}
                 >
                   <option value="">— category —</option>
                   {data.categories.map(c => <option key={c} value={c}>{c}</option>)}

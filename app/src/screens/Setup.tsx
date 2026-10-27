@@ -92,6 +92,39 @@ function AccountsEditor({ data, update, confirm, show }: EditorProps) {
               />
             </Field>
           </div>
+          <Field label="What this account is for">
+            <input
+              type="text" value={a.purpose ?? ''} placeholder="the kids, coffee, family…"
+              onChange={e => setAcct(a.id, x => ({ ...x, purpose: e.target.value }))}
+            />
+          </Field>
+
+          <div className="field">
+            <label className="fld">Spending it covers</label>
+            <div className="chipset">
+              {data.categories.map(c => {
+                const on = (a.categories || []).includes(c);
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`chip ${on ? 'on' : ''}`}
+                    onClick={() => setAcct(a.id, x => ({
+                      ...x,
+                      categories: on
+                        ? (x.categories || []).filter(y => y !== c)
+                        : [...(x.categories || []), c],
+                    }))}
+                  >{c}</button>
+                );
+              })}
+            </div>
+            <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>
+              Spending in these categories comes from this account by default — so Bunna
+              can be your coffee account, Dashen for the kids, Berhan for family.
+            </div>
+          </div>
+
           <Switch
             label="Archived" hint="keeps the history but leaves it out of your total"
             checked={!!a.archived}
@@ -221,7 +254,12 @@ function BillsEditor({ data, update, confirm, show }: EditorProps) {
             </Field>
             <Field label="Category">
               <select value={b.category}
-                onChange={e => setBill(b.id, x => ({ ...x, category: e.target.value }))}>
+                onChange={e => {
+                  const category = e.target.value;
+                  const routed = (data.accounts.find(
+                    a => !a.archived && (a.categories || []).includes(category)) || {}).id;
+                  setBill(b.id, x => ({ ...x, category, ...(routed ? { accountId: routed } : {}) }));
+                }}>
                 {data.categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>

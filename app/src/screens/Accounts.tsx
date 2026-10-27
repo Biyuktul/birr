@@ -49,7 +49,9 @@ export default function Accounts() {
                 <span>
                   <strong>{a.name}</strong>
                   <div className="meta" style={{ color: 'var(--text-muted)', fontSize: 12.5 }}>
-                    {a.type === 'mobile' ? 'mobile money' : a.type}
+                    {engine.accountPurpose(a.id)
+                      ? <>for {engine.accountPurpose(a.id)}</>
+                      : <>{a.type === 'mobile' ? 'mobile money' : a.type}</>}
                     {a.senderIds.length ? ` · ${a.senderIds.join(', ')}` : ''}
                   </div>
                 </span>

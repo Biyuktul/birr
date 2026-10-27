@@ -245,6 +245,20 @@ label.fld {
 .switch .txt small { display: block; color: var(--text-muted); font-size: 12.5px; }
 input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; flex: 0 0 auto; accent-color: var(--series-1); }
 
+/* ---------- chips: pick several from a list ---------- */
+.chipset { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  appearance: none; font: inherit; font-size: 13px;
+  background: var(--plane); color: var(--text-secondary);
+  border: 1px solid var(--baseline); border-radius: 999px;
+  padding: 7px 13px; cursor: pointer; min-height: 36px;
+}
+.chip.on {
+  background: var(--series-1); border-color: var(--series-1);
+  color: #fff; font-weight: 600;
+}
+.chip:active { transform: scale(0.97); }
+
 /* ---------- pills ---------- */
 .pill {
   display: inline-block; font-size: 11px; font-weight: 700;

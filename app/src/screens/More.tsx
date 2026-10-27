@@ -28,6 +28,17 @@ export default function More({ go }: { go: (r: Route) => void }) {
         {data.loan.enabled && (
           <RowLink label="Loan" meta={money(engine.loanOutstanding())} onClick={() => go('loan')} />
         )}
+        <RowLink
+          label="Lent out"
+          meta={(() => {
+            const l = engine.lendingStatus();
+            if (l.outstanding <= 0) return 'nobody owes you';
+            return l.overdueCount > 0
+              ? <span className="pill bad">{money(l.outstanding)} · {l.overdueCount} late</span>
+              : money(l.outstanding);
+          })()}
+          onClick={() => go('lending')}
+        />
         {data.ekub.enabled && (
           <RowLink
             label="Ekub"

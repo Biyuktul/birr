@@ -16,10 +16,12 @@ import Budget from './screens/Budget';
 import Setup from './screens/Setup';
 import Checks from './screens/Checks';
 import Account from './screens/Account';
+import Lending from './screens/Lending';
 
 export type Route =
   | 'home' | 'calendar' | 'inbox' | 'forecast' | 'more'
-  | 'accounts' | 'loan' | 'ekub' | 'relocation' | 'budget' | 'setup' | 'checks' | 'account';
+  | 'accounts' | 'loan' | 'ekub' | 'relocation' | 'budget' | 'setup' | 'checks' | 'account'
+  | 'lending';
 
 const TITLES: Record<Route, string> = {
   home: 'Birr',
@@ -35,11 +37,13 @@ const TITLES: Record<Route, string> = {
   setup: 'Setup',
   checks: 'Checks',
   account: 'Account',
+  lending: 'Lent out',
 };
 
 /** Screens reached from More — they get a back arrow instead of a tab. */
 const SUB: Route[] = [
   'accounts', 'loan', 'ekub', 'relocation', 'budget', 'setup', 'checks', 'account', 'inbox',
+  'lending',
 ];
 
 const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
@@ -142,6 +146,7 @@ export default function App() {
       case 'setup': return <Setup />;
       case 'checks': return <Checks />;
       case 'account': return <Account />;
+      case 'lending': return <Lending />;
     }
   })();
 

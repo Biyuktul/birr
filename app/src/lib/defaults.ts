@@ -125,6 +125,7 @@ export function makeDefaultData(today: ISODate = todayISO()): Data {
     },
 
     transactions: [],
+    lending: [],
     overrides: {},
     paid: {},
     recon: {},

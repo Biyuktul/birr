@@ -4,6 +4,7 @@ import { makeEngine } from '../src/lib/engine';
 import {
   payEkubRound, unpayEkubRound, setEkubRoundAmount, setEkubRoundDate, setAccountBalance,
   payLoan, unpayLoan,
+  lendMoney, recordRepayment, removeRepayment, removeLending,
 } from '../src/lib/actions';
 import type { Data } from '../src/lib/types';
 
@@ -337,5 +338,158 @@ describe('messages waiting to be confirmed', () => {
     };
     expect(total(d1)).toBe(before);           // a pending message moves nothing
     expect(d1.transactions).toEqual(d0.transactions);
+  });
+});
+
+describe('money you lend to someone', () => {
+  const L = (d: Data) => makeEngine(d).lendingStatus();
+
+  it('leaves the account it was lent from', () => {
+    const d0 = fresh();
+    const before = bal(d0, 'cbe');
+    const d1 = lendMoney(d0, { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-25' });
+    expect(bal(d1, 'cbe')).toBe(before - 2000);
+  });
+
+  it('is not counted as money you have, but is counted as owed to you', () => {
+    const d0 = fresh();
+    const beforeTotal = total(d0);
+    const d1 = lendMoney(d0, { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-25' });
+    expect(total(d1)).toBe(beforeTotal - 2000);      // gone from spendable
+    expect(L(d1).outstanding).toBe(2000);            // but tracked as owed back
+  });
+
+  it('is not spending — it stays out of the budget', () => {
+    const d1 = lendMoney(fresh(), { person: 'Abebe', amount: 2000, accountId: 'cash', lentOn: '2026-10-25' });
+    expect(makeEngine(d1).budgetStatus('2026-10').every(r => r.spent === 0)).toBe(true);
+  });
+
+  it('records who, from where, and when it is due back', () => {
+    const d1 = lendMoney(fresh(), {
+      person: 'Abebe', amount: 2000, accountId: 'cbe',
+      lentOn: '2026-10-25', dueOn: '2026-11-25', note: 'school fees',
+    });
+    const i = L(d1).items[0];
+    expect(i.person).toBe('Abebe');
+    expect(i.accountId).toBe('cbe');
+    expect(i.dueOn).toBe('2026-11-25');
+    expect(i.note).toBe('school fees');
+  });
+
+  it('accepts money back in parts', () => {
+    let d = lendMoney(fresh(), { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-20' });
+    const id = d.lending[0].id;
+    const afterLend = bal(d, 'cbe');
+    d = recordRepayment(d, { lendingId: id, amount: 500, date: '2026-10-25' });
+    expect(bal(d, 'cbe')).toBe(afterLend + 500);
+    expect(L(d).outstanding).toBe(1500);
+    expect(L(d).items[0].settled).toBe(false);
+  });
+
+  it('settles when it is all back, and the account is whole again', () => {
+    const d0 = fresh();
+    const before = bal(d0, 'cbe');
+    let d = lendMoney(d0, { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-20' });
+    const id = d.lending[0].id;
+    d = recordRepayment(d, { lendingId: id, amount: 2000, date: '2026-10-25' });
+    expect(bal(d, 'cbe')).toBe(before);
+    expect(L(d).outstanding).toBe(0);
+    expect(L(d).items[0].settled).toBe(true);
+  });
+
+  it('never records more coming back than went out', () => {
+    let d = lendMoney(fresh(), { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-20' });
+    const id = d.lending[0].id;
+    d = recordRepayment(d, { lendingId: id, amount: 99999, date: '2026-10-25' });
+    expect(L(d).items[0].repaid).toBe(2000);
+    expect(L(d).outstanding).toBe(0);
+  });
+
+  it('can come back into a different account than it left', () => {
+    let d = lendMoney(fresh(), { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-20' });
+    const cashBefore = bal(d, 'cash');
+    d = recordRepayment(d, { lendingId: d.lending[0].id, amount: 2000, date: '2026-10-25', accountId: 'cash' });
+    expect(bal(d, 'cash')).toBe(cashBefore + 2000);
+  });
+
+  it('flags money that is late coming back', () => {
+    const d = lendMoney(fresh(), {
+      person: 'Abebe', amount: 2000, accountId: 'cbe',
+      lentOn: '2026-09-01', dueOn: '2026-10-01',       // asOf is the 25th
+    });
+    const i = L(d).items[0];
+    expect(i.overdue).toBe(true);
+    expect(i.daysLate).toBe(24);
+    expect(makeEngine(d).alerts().some(a => /due to return/i.test(a.text))).toBe(true);
+  });
+
+  it('does not nag about money with no date agreed', () => {
+    const d = lendMoney(fresh(), { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-01-01' });
+    expect(L(d).items[0].overdue).toBe(false);
+  });
+
+  it('undoing a repayment puts it back out there', () => {
+    let d = lendMoney(fresh(), { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-20' });
+    const id = d.lending[0].id;
+    d = recordRepayment(d, { lendingId: id, amount: 500, date: '2026-10-25' });
+    const rid = d.lending[0].repayments[0].id;
+    const withRepay = bal(d, 'cbe');
+    d = removeRepayment(d, id, rid);
+    expect(bal(d, 'cbe')).toBe(withRepay - 500);
+    expect(L(d).outstanding).toBe(2000);
+  });
+
+  it('removing it entirely puts every movement back', () => {
+    const d0 = fresh();
+    const before = bal(d0, 'cbe');
+    let d = lendMoney(d0, { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-20' });
+    d = recordRepayment(d, { lendingId: d.lending[0].id, amount: 700, date: '2026-10-25' });
+    d = removeLending(d, d.lending[0].id);
+    expect(bal(d, 'cbe')).toBe(before);
+    expect(d.lending).toHaveLength(0);
+    expect(d.transactions).toEqual(d0.transactions);
+  });
+
+  it('refuses a nameless or non-positive loan', () => {
+    const d0 = fresh();
+    expect(lendMoney(d0, { person: '', amount: 100, accountId: 'cbe', lentOn: '2026-10-25' })).toBe(d0);
+    expect(lendMoney(d0, { person: 'X', amount: 0, accountId: 'cbe', lentOn: '2026-10-25' })).toBe(d0);
+    expect(lendMoney(d0, { person: 'X', amount: -5, accountId: 'cbe', lentOn: '2026-10-25' }).lending).toHaveLength(0);
+  });
+});
+
+describe('what an account is for', () => {
+  function withPurpose(): Data {
+    const d = fresh();
+    d.accounts = d.accounts.map(a =>
+      a.id === 'bunna' ? { ...a, purpose: 'Coffee', categories: ['Eating out'] }
+        : a.id === 'dashen' ? { ...a, categories: ['Child'] }
+          : a);
+    return d;
+  }
+
+  it('routes spending of that kind to that account', () => {
+    const e = makeEngine(withPurpose());
+    expect(e.accountForCategory('Eating out')).toBe('bunna');
+    expect(e.accountForCategory('Child')).toBe('dashen');
+  });
+
+  it('leaves categories nobody claimed unrouted', () => {
+    const e = makeEngine(withPurpose());
+    expect(e.accountForCategory('Groceries')).toBeNull();
+    expect(e.accountForCategory(null)).toBeNull();
+  });
+
+  it('describes an account by its purpose, falling back to its categories', () => {
+    const e = makeEngine(withPurpose());
+    expect(e.accountPurpose('bunna')).toBe('Coffee');     // the words you chose
+    expect(e.accountPurpose('dashen')).toBe('Child');     // else what it covers
+    expect(e.accountPurpose('cash')).toBeNull();
+  });
+
+  it('ignores an archived account when routing', () => {
+    const d = withPurpose();
+    d.accounts = d.accounts.map(a => a.id === 'bunna' ? { ...a, archived: true } : a);
+    expect(makeEngine(d).accountForCategory('Eating out')).toBeNull();
   });
 });

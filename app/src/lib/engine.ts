@@ -8,6 +8,7 @@ import type {
   Data, ISODate, Schedule, Commitment, IncomeOccurrence, SafeToSpend,
   Forecast, ForecastDay, Scenario, LoanSchedule, LoanRow, EkubStatus,
   RelocationResult, Reconciliation, BudgetRow, Alert, Account,
+  LendingStatus, LendingItem,
 } from './types';
 
 /* ---------- dates: local time, never UTC-shifted ---------- */
@@ -271,6 +272,54 @@ export function makeEngine(data: Data) {
   }
 
   /* ============================================================
+     MONEY YOU HAVE LENT OUT
+     It has left your accounts, so it is not spendable — but it is
+     still yours, so it is reported separately rather than ignored.
+     ============================================================ */
+  function lendingStatus(): LendingStatus {
+    const items: LendingItem[] = (data.lending || []).map(l => {
+      const repaid = round2((l.repayments || []).reduce((t, r) => t + r.amount, 0));
+      const outstanding = round2(Math.max(0, l.amount - repaid));
+      const settled = outstanding <= 0.005;
+      const daysLate = !settled && l.dueOn && cmp(l.dueOn, asOf) < 0
+        ? daysBetween(l.dueOn, asOf) : 0;
+      return { ...l, repaid, outstanding, settled, overdue: daysLate > 0, daysLate };
+    }).sort((a, b) => {
+      if (a.settled !== b.settled) return a.settled ? 1 : -1;      // open first
+      if (a.dueOn && b.dueOn) return cmp(a.dueOn, b.dueOn);        // soonest due
+      if (a.dueOn) return -1;
+      if (b.dueOn) return 1;
+      return cmp(b.lentOn, a.lentOn);
+    });
+
+    const open = items.filter(i => !i.settled);
+    return {
+      items,
+      totalOut: round2(items.reduce((t, i) => t + i.amount, 0)),
+      totalRepaid: round2(items.reduce((t, i) => t + i.repaid, 0)),
+      outstanding: round2(open.reduce((t, i) => t + i.outstanding, 0)),
+      overdueCount: open.filter(i => i.overdue).length,
+      overdueAmount: round2(open.filter(i => i.overdue).reduce((t, i) => t + i.outstanding, 0)),
+    };
+  }
+
+  /** Which account a category is meant to be paid from, if one claims it. */
+  function accountForCategory(category: string | null | undefined): string | null {
+    if (!category) return null;
+    const match = activeAccounts.find(a => (a.categories || []).includes(category));
+    return match ? match.id : null;
+  }
+
+  /** What an account is for, in words. */
+  function accountPurpose(accountId: string): string | null {
+    const a = accountById[accountId];
+    if (!a) return null;
+    if (a.purpose && a.purpose.trim()) return a.purpose.trim();
+    const cats = a.categories || [];
+    return cats.length ? cats.join(', ') : null;
+  }
+
+  /* ============================================================
      COMMITMENTS
      Everything dated that you owe, from any source, treated alike
      so mark-paid and postpone work the same on all of them.
@@ -466,6 +515,7 @@ export function makeEngine(data: Data) {
     for (const t of data.transactions) {
       if (t.isTransfer) continue;
       if (t.isAdjustment) continue;                 // a correction is not spending
+      if (t.isLending) continue;                    // lent out, not spent — you expect it back
       if (t.amount >= 0) continue;                  // credits are not spending
       if (monthKey(t.date) !== mk) continue;
       const c = t.category || 'Other';
@@ -495,6 +545,30 @@ export function makeEngine(data: Data) {
     const sts = safeToSpend();
     const f = forecast(90, 'late');
     const soon = addDaysISO(asOf, 10);
+
+    /* Money lent out that is past the date it was due back. */
+    {
+      const lend = lendingStatus();
+      for (const i of lend.items.filter(x => x.overdue)) {
+        out.push({
+          level: 'warn',
+          text: `${i.person} was due to return ${money(i.outstanding)} on ${fmtDate(i.dueOn!)}`
+            + ` — ${i.daysLate} day${i.daysLate === 1 ? '' : 's'} ago.`,
+          action: { label: 'Open', route: 'lending' },
+          date: i.dueOn,
+        });
+      }
+      const soonBack = lend.items.filter(
+        x => !x.settled && !x.overdue && x.dueOn && cmp(x.dueOn, soon) <= 0);
+      for (const i of soonBack) {
+        out.push({
+          level: 'info',
+          text: `${i.person} is due to return ${money(i.outstanding)} on ${fmtDate(i.dueOn!)}.`,
+          action: { label: 'Open', route: 'lending' },
+          date: i.dueOn,
+        });
+      }
+    }
 
     /* Messages captured by the phone shortcut land in the inbox unconfirmed.
        Nothing touches the balances until they are, so say so here —
@@ -645,6 +719,7 @@ export function makeEngine(data: Data) {
     data, asOf, accountById, activeAccounts,
     accountBalance, combinedBalance, reconcile,
     loanSchedule, loanOutstanding, loanPayments, ekubStatus, ekubRoundDate, ekubAmountFor,
+    lendingStatus, accountForCategory, accountPurpose,
     commitments, incomeOccurrences,
     safeToSpend, forecast, relocation,
     spendingByCategory, budgetStatus, alerts,

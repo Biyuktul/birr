@@ -221,3 +221,131 @@ export function unpayLoan(d: Data, paymentId: string): Data {
     },
   };
 }
+
+/* ---------- money you lend to other people ---------- */
+
+export interface LendInput {
+  person: string;
+  amount: number;
+  accountId: string;
+  lentOn: ISODate;
+  dueOn?: ISODate;
+  note?: string;
+}
+
+/**
+ * Lend money to someone: it leaves the account, but it is not spending —
+ * it is recorded as still owed to you, and kept out of the budget.
+ */
+export function lendMoney(d: Data, input: LendInput): Data {
+  if (!Number.isFinite(input.amount) || input.amount <= 0) return d;
+  if (!input.person.trim()) return d;
+
+  const amount = round2(input.amount);
+  const txId = uid('t');
+
+  const tx: Txn = {
+    id: txId,
+    date: input.lentOn,
+    accountId: input.accountId,
+    amount: -amount,
+    category: null,
+    note: `Lent to ${input.person.trim()}`,
+    isTransfer: false,
+    isLending: true,
+    source: 'manual',
+  };
+
+  return {
+    ...d,
+    transactions: [...d.transactions, tx],
+    lending: [...(d.lending || []), {
+      id: uid('l'),
+      person: input.person.trim(),
+      amount,
+      accountId: input.accountId,
+      lentOn: input.lentOn,
+      dueOn: input.dueOn || undefined,
+      note: input.note,
+      transactionId: txId,
+      repayments: [],
+    }],
+  };
+}
+
+export interface RepayInput {
+  lendingId: string;
+  amount: number;
+  date: ISODate;
+  /** Which account it came back into. Defaults to the one it went out of. */
+  accountId?: string;
+}
+
+/** Record money coming back. Partial repayments are fine. */
+export function recordRepayment(d: Data, input: RepayInput): Data {
+  const l = (d.lending || []).find(x => x.id === input.lendingId);
+  if (!l) return d;
+  if (!Number.isFinite(input.amount) || input.amount <= 0) return d;
+
+  const alreadyBack = round2((l.repayments || []).reduce((t, r) => t + r.amount, 0));
+  const outstanding = round2(l.amount - alreadyBack);
+  if (outstanding <= 0.005) return d;                 // nothing left owing
+
+  // Never record more coming back than went out.
+  const amount = round2(Math.min(input.amount, outstanding));
+  const accountId = input.accountId || l.accountId;
+  const txId = uid('t');
+
+  const tx: Txn = {
+    id: txId,
+    date: input.date,
+    accountId,
+    amount,                                            // money coming in
+    category: null,
+    note: `${l.person} paid back`,
+    isTransfer: false,
+    isLending: true,
+    source: 'manual',
+  };
+
+  return {
+    ...d,
+    transactions: [...d.transactions, tx],
+    lending: d.lending.map(x => x.id === l.id ? {
+      ...x,
+      repayments: [...(x.repayments || []),
+        { id: uid('r'), date: input.date, amount, accountId, transactionId: txId }],
+    } : x),
+  };
+}
+
+/** Undo a repayment: the money leaves the account again and is owed again. */
+export function removeRepayment(d: Data, lendingId: string, repaymentId: string): Data {
+  const l = (d.lending || []).find(x => x.id === lendingId);
+  if (!l) return d;
+  const r = (l.repayments || []).find(x => x.id === repaymentId);
+  if (!r) return d;
+  return {
+    ...d,
+    transactions: r.transactionId
+      ? d.transactions.filter(t => t.id !== r.transactionId)
+      : d.transactions,
+    lending: d.lending.map(x => x.id === l.id
+      ? { ...x, repayments: x.repayments.filter(p => p.id !== repaymentId) }
+      : x),
+  };
+}
+
+/** Forget a loan entirely, putting back every movement it created. */
+export function removeLending(d: Data, lendingId: string): Data {
+  const l = (d.lending || []).find(x => x.id === lendingId);
+  if (!l) return d;
+  const ids = new Set<string>(
+    [l.transactionId, ...(l.repayments || []).map(r => r.transactionId)]
+      .filter((x): x is string => !!x));
+  return {
+    ...d,
+    transactions: d.transactions.filter(t => !ids.has(t.id)),
+    lending: d.lending.filter(x => x.id !== lendingId),
+  };
+}

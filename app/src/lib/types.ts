@@ -39,6 +39,10 @@ export interface Account {
   opening: number;
   openingDate: ISODate;
   archived?: boolean;
+  /** What this account is for, in your words — "the kids", "coffee". */
+  purpose?: string;
+  /** Spending of these categories defaults to this account. */
+  categories?: string[];
 }
 
 export interface IncomeItem {
@@ -126,6 +130,49 @@ export interface Relocation {
   otherMonthlyDelta: number;
 }
 
+/* ---------- money you lend to other people ---------- */
+
+export interface Repayment {
+  id: string;
+  date: ISODate;
+  amount: number;
+  /** Which account it came back into. */
+  accountId: string;
+  transactionId?: string;
+}
+
+export interface Lending {
+  id: string;
+  /** Who has it. */
+  person: string;
+  amount: number;
+  /** Which account it went out of. */
+  accountId: string;
+  lentOn: ISODate;
+  /** When you expect it back. Absent means no date was agreed. */
+  dueOn?: ISODate;
+  note?: string;
+  transactionId?: string;
+  repayments: Repayment[];
+}
+
+export interface LendingItem extends Lending {
+  repaid: number;
+  outstanding: number;
+  settled: boolean;
+  overdue: boolean;
+  daysLate: number;
+}
+
+export interface LendingStatus {
+  items: LendingItem[];
+  totalOut: number;
+  totalRepaid: number;
+  outstanding: number;
+  overdueCount: number;
+  overdueAmount: number;
+}
+
 export interface Policy {
   /** cash never counted as spendable */
   bufferAmount: number;
@@ -153,6 +200,11 @@ export interface Txn {
    * masquerade as groceries.
    */
   isAdjustment?: boolean;
+  /**
+   * Money lent to someone, or coming back from them. It leaves the account
+   * but it is not spending — you expect to see it again.
+   */
+  isLending?: boolean;
 }
 
 export interface ParsedMessage {
@@ -196,6 +248,8 @@ export interface Data {
   relocation: Relocation;
   budgets: Record<string, number>;
   transactions: Txn[];
+  /** Money you have lent to other people. */
+  lending: Lending[];
   /** commitment key -> moved-to date */
   overrides: Record<string, ISODate>;
   /** commitment key -> settled */
@@ -337,7 +391,7 @@ export interface BudgetRow {
 
 export type AlertRoute =
   | 'home' | 'calendar' | 'forecast' | 'loan' | 'ekub' | 'accounts'
-  | 'relocation' | 'budget' | 'inbox' | 'setup';
+  | 'relocation' | 'budget' | 'inbox' | 'setup' | 'lending';
 
 export interface Alert {
   level: 'danger' | 'warn' | 'good' | 'info';

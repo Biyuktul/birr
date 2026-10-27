@@ -30,11 +30,22 @@ export function loadData(): Data {
     if (raw) {
       const parsed = JSON.parse(raw) as Data;
       if (parsed && parsed.version === 1 && Array.isArray(parsed.accounts)) {
-        return { ...parsed, meta: { ...parsed.meta, asOf: todayISO() } };
+        return migrate(parsed);
       }
     }
   } catch { /* fall through to defaults */ }
   return makeDefaultData();
+}
+
+/** Fill in anything added since this copy of the data was saved, so an older
+ *  device does not come back with missing fields. */
+function migrate(parsed: Data): Data {
+  return {
+    ...parsed,
+    meta: { ...parsed.meta, asOf: todayISO() },
+    lending: Array.isArray(parsed.lending) ? parsed.lending : [],
+    accounts: parsed.accounts.map(a => ({ ...a, categories: a.categories ?? [] })),
+  };
 }
 
 export function saveData(d: Data): boolean {
@@ -292,7 +303,7 @@ export function importJSON(text: string): Data | { error: string } {
     if (!parsed || typeof parsed !== 'object') return { error: 'That is not a Birr backup.' };
     if (parsed.version !== 1) return { error: `Unsupported backup version ${String(parsed.version)}.` };
     if (!Array.isArray(parsed.accounts)) return { error: 'The backup has no accounts in it.' };
-    return { ...parsed, meta: { ...parsed.meta, asOf: todayISO() } };
+    return migrate(parsed);
   } catch {
     return { error: 'That file is not valid JSON.' };
   }
