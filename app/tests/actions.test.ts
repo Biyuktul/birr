@@ -493,3 +493,77 @@ describe('what an account is for', () => {
     expect(makeEngine(d).accountForCategory('Eating out')).toBeNull();
   });
 });
+
+describe('lending money that never sat in your accounts', () => {
+  const L = (d: Data) => makeEngine(d).lendingStatus();
+
+  it('changes no balance at all', () => {
+    const d0 = fresh();
+    const before = total(d0);
+    const d1 = lendMoney(d0, {
+      person: 'Abebe', amount: 2000, accountId: null,
+      source: 'cash I was holding', lentOn: '2026-10-25',
+    });
+    expect(total(d1)).toBe(before);
+    expect(d1.transactions).toEqual(d0.transactions);   // nothing booked
+  });
+
+  it('is still recorded as owed back to you', () => {
+    const d1 = lendMoney(fresh(), {
+      person: 'Abebe', amount: 2000, accountId: null, lentOn: '2026-10-25',
+    });
+    expect(L(d1).outstanding).toBe(2000);
+    expect(L(d1).items[0].accountId).toBeNull();
+  });
+
+  it('remembers where it came from, in your words', () => {
+    const d1 = lendMoney(fresh(), {
+      person: 'Abebe', amount: 2000, accountId: null,
+      source: 'money from my brother', lentOn: '2026-10-25',
+    });
+    expect(L(d1).items[0].source).toBe('money from my brother');
+  });
+
+  it('still chases it when it is late', () => {
+    const d = lendMoney(fresh(), {
+      person: 'Abebe', amount: 2000, accountId: null,
+      lentOn: '2026-09-01', dueOn: '2026-10-01',
+    });
+    expect(L(d).items[0].overdue).toBe(true);
+    expect(makeEngine(d).alerts().some(a => /due to return/i.test(a.text))).toBe(true);
+  });
+
+  it('can come back INTO an account even though it never left one', () => {
+    let d = lendMoney(fresh(), { person: 'Abebe', amount: 2000, accountId: null, lentOn: '2026-10-20' });
+    const before = bal(d, 'cbe');
+    d = recordRepayment(d, { lendingId: d.lending[0].id, amount: 2000, date: '2026-10-25', accountId: 'cbe' });
+    expect(bal(d, 'cbe')).toBe(before + 2000);          // a real gain
+    expect(L(d).outstanding).toBe(0);
+  });
+
+  it('can also come back as cash, touching nothing', () => {
+    const d0 = fresh();
+    let d = lendMoney(d0, { person: 'Abebe', amount: 2000, accountId: null, lentOn: '2026-10-20' });
+    d = recordRepayment(d, { lendingId: d.lending[0].id, amount: 2000, date: '2026-10-25', accountId: null });
+    expect(total(d)).toBe(total(d0));
+    expect(L(d).items[0].settled).toBe(true);
+  });
+
+  it('money lent FROM an account can come back as cash, and the account stays down', () => {
+    const d0 = fresh();
+    const before = bal(d0, 'cbe');
+    let d = lendMoney(d0, { person: 'Abebe', amount: 2000, accountId: 'cbe', lentOn: '2026-10-20' });
+    d = recordRepayment(d, { lendingId: d.lending[0].id, amount: 2000, date: '2026-10-25', accountId: null });
+    expect(bal(d, 'cbe')).toBe(before - 2000);          // never banked
+    expect(L(d).items[0].settled).toBe(true);           // but settled between you
+  });
+
+  it('removing it leaves everything exactly as it was', () => {
+    const d0 = fresh();
+    let d = lendMoney(d0, { person: 'Abebe', amount: 2000, accountId: null, lentOn: '2026-10-20' });
+    d = recordRepayment(d, { lendingId: d.lending[0].id, amount: 500, date: '2026-10-25', accountId: null });
+    d = removeLending(d, d.lending[0].id);
+    expect(d.transactions).toEqual(d0.transactions);
+    expect(d.lending).toHaveLength(0);
+  });
+});

@@ -136,8 +136,11 @@ export interface Repayment {
   id: string;
   date: ISODate;
   amount: number;
-  /** Which account it came back into. */
-  accountId: string;
+  /**
+   * Which account it came back into, or null if it did not reach one —
+   * cash in hand you have not banked, say. Null means no balance moves.
+   */
+  accountId: string | null;
   transactionId?: string;
 }
 
@@ -146,8 +149,15 @@ export interface Lending {
   /** Who has it. */
   person: string;
   amount: number;
-  /** Which account it went out of. */
-  accountId: string;
+  /**
+   * Which of your accounts it came out of, or null if it never passed
+   * through one — money somebody handed you to pass on, cash you were
+   * holding, a salary advance. Null means no balance moves, but it is
+   * still owed back to you.
+   */
+  accountId: string | null;
+  /** Where it came from, when that was not one of your accounts. */
+  source?: string;
   lentOn: ISODate;
   /** When you expect it back. Absent means no date was agreed. */
   dueOn?: ISODate;

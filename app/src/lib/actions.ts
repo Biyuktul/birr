@@ -227,7 +227,10 @@ export function unpayLoan(d: Data, paymentId: string): Data {
 export interface LendInput {
   person: string;
   amount: number;
-  accountId: string;
+  /** null when it did not come out of one of your accounts. */
+  accountId: string | null;
+  /** Where it came from, when that was not one of your accounts. */
+  source?: string;
   lentOn: ISODate;
   dueOn?: ISODate;
   note?: string;
@@ -242,9 +245,11 @@ export function lendMoney(d: Data, input: LendInput): Data {
   if (!input.person.trim()) return d;
 
   const amount = round2(input.amount);
-  const txId = uid('t');
 
-  const tx: Txn = {
+  // Money that never passed through one of your accounts moves no balance.
+  // It is still owed back to you, so it is still recorded.
+  const txId = input.accountId ? uid('t') : undefined;
+  const tx: Txn | null = input.accountId && txId ? {
     id: txId,
     date: input.lentOn,
     accountId: input.accountId,
@@ -254,16 +259,17 @@ export function lendMoney(d: Data, input: LendInput): Data {
     isTransfer: false,
     isLending: true,
     source: 'manual',
-  };
+  } : null;
 
   return {
     ...d,
-    transactions: [...d.transactions, tx],
+    transactions: tx ? [...d.transactions, tx] : d.transactions,
     lending: [...(d.lending || []), {
       id: uid('l'),
       person: input.person.trim(),
       amount,
       accountId: input.accountId,
+      source: input.accountId ? undefined : (input.source?.trim() || undefined),
       lentOn: input.lentOn,
       dueOn: input.dueOn || undefined,
       note: input.note,
@@ -277,8 +283,11 @@ export interface RepayInput {
   lendingId: string;
   amount: number;
   date: ISODate;
-  /** Which account it came back into. Defaults to the one it went out of. */
-  accountId?: string;
+  /**
+   * Which account it came back into. Omit to use the one it went out of;
+   * pass null when it did not reach an account at all.
+   */
+  accountId?: string | null;
 }
 
 /** Record money coming back. Partial repayments are fine. */
@@ -293,10 +302,11 @@ export function recordRepayment(d: Data, input: RepayInput): Data {
 
   // Never record more coming back than went out.
   const amount = round2(Math.min(input.amount, outstanding));
-  const accountId = input.accountId || l.accountId;
-  const txId = uid('t');
+  const accountId = input.accountId === undefined ? l.accountId : input.accountId;
 
-  const tx: Txn = {
+  // Money handed back in cash you have not banked moves no balance either.
+  const txId = accountId ? uid('t') : undefined;
+  const tx: Txn | null = accountId && txId ? {
     id: txId,
     date: input.date,
     accountId,
@@ -306,11 +316,11 @@ export function recordRepayment(d: Data, input: RepayInput): Data {
     isTransfer: false,
     isLending: true,
     source: 'manual',
-  };
+  } : null;
 
   return {
     ...d,
-    transactions: [...d.transactions, tx],
+    transactions: tx ? [...d.transactions, tx] : d.transactions,
     lending: d.lending.map(x => x.id === l.id ? {
       ...x,
       repayments: [...(x.repayments || []),

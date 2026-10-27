@@ -25,7 +25,7 @@ await p.click('button:has-text("Lend money to someone")'); await p.waitForTimeou
 await p.fill('label:has-text("To whom") + input','Abebe');
 const amt=p.locator('label:has-text("How much") + input');
 await amt.fill(''); await p.keyboard.type('2000',{delay:50});
-await p.selectOption('label:has-text("From which account") + select','cbe');
+await p.selectOption('label:has-text("Where it came from") + select','cbe');
 await p.click('button:has-text("in a month")'); await p.waitForTimeout(250);
 const saveBtn=p.locator('button.primary:has-text("Lend")').first();
 console.log('  button: '+(await saveBtn.textContent()).trim());

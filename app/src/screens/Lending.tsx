@@ -5,6 +5,9 @@ import { lendMoney, recordRepayment, removeRepayment, removeLending } from '../l
 import { Card, Tile, Field, NumberInput, useToast } from '../components/ui';
 import type { LendingItem } from '../lib/types';
 
+/** The value the account picker uses for "not one of my accounts". */
+const ELSEWHERE = '__elsewhere__';
+
 export default function Lending() {
   const { engine, update } = useStore();
   const { toast, show } = useToast();
@@ -120,14 +123,14 @@ function LendingRow({ item, isOpen, onToggle, onRepay, onRemoveRepayment, onForg
   item: LendingItem;
   isOpen: boolean;
   onToggle: () => void;
-  onRepay: (amount: number, date: string, accountId: string) => void;
+  onRepay: (amount: number, date: string, accountId: string | null) => void;
   onRemoveRepayment: (id: string) => void;
   onForget: () => void;
 }) {
   const { engine } = useStore();
   const [amount, setAmount] = useState(item.outstanding);
   const [date, setDate] = useState(engine.asOf);
-  const [into, setInto] = useState(item.accountId);
+  const [into, setInto] = useState<string>(item.accountId ?? ELSEWHERE);
 
   const dueIn = item.dueOn ? daysBetween(engine.asOf, item.dueOn) : null;
 
@@ -139,7 +142,9 @@ function LendingRow({ item, isOpen, onToggle, onRepay, onRemoveRepayment, onForg
           {item.overdue && <> <span className="pill bad">{item.daysLate}d late</span></>}
           <div className="meta" style={{ color: 'var(--text-muted)', fontSize: 12.5 }}>
             {money(item.amount)} lent {fmtDate(item.lentOn)} from{' '}
-            {engine.accountById[item.accountId]?.name ?? item.accountId}
+            {item.accountId
+              ? (engine.accountById[item.accountId]?.name ?? item.accountId)
+              : (item.source || 'outside your accounts')}
             {item.repaid > 0 && <> · {money(item.repaid)} back</>}
             {item.dueOn && <> · due {fmtDate(item.dueOn)}{dueIn !== null && dueIn >= 0 && ` (in ${dueIn}d)`}</>}
             {!item.dueOn && <> · no date agreed</>}
@@ -178,13 +183,19 @@ function LendingRow({ item, isOpen, onToggle, onRepay, onRemoveRepayment, onForg
               {engine.activeAccounts.map(a => (
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
+              <option value={ELSEWHERE}>Cash in hand — not into an account</option>
             </select>
           </Field>
+          {into === ELSEWHERE && (
+            <div className="muted" style={{ fontSize: 12.5, marginTop: -4, marginBottom: 10 }}>
+              Recorded as back from {item.person}, but no balance changes.
+            </div>
+          )}
           <div className="btnrow">
             <button
               className="btn primary"
               disabled={amount <= 0}
-              onClick={() => onRepay(amount, date, into)}
+              onClick={() => onRepay(amount, date, into === ELSEWHERE ? null : into)}
             >
               {amount >= item.outstanding
                 ? `Paid back in full — ${money(item.outstanding)}`
@@ -200,7 +211,11 @@ function LendingRow({ item, isOpen, onToggle, onRepay, onRemoveRepayment, onForg
                 <div className="item" key={r.id} style={{ padding: '5px 0' }}>
                   <div className="nm" style={{ fontSize: 13.5 }}>
                     {fmtDateFull(r.date)}
-                    <small>into {engine.accountById[r.accountId]?.name ?? r.accountId}</small>
+                    <small>
+                      {r.accountId
+                        ? <>into {engine.accountById[r.accountId]?.name ?? r.accountId}</>
+                        : 'cash in hand — no balance changed'}
+                    </small>
                   </div>
                   <div className="amt pos">{money(r.amount)}</div>
                   <button className="btn ghost sm" onClick={() => onRemoveRepayment(r.id)}>
@@ -218,18 +233,23 @@ function LendingRow({ item, isOpen, onToggle, onRepay, onRemoveRepayment, onForg
 
 /* ---------- lending something new ---------- */
 function LendForm({ onSave, onCancel }: {
-  onSave: (i: { person: string; amount: number; accountId: string; lentOn: string; dueOn?: string; note?: string }) => void;
+  onSave: (i: {
+    person: string; amount: number; accountId: string | null; source?: string;
+    lentOn: string; dueOn?: string; note?: string;
+  }) => void;
   onCancel: () => void;
 }) {
   const { engine } = useStore();
   const [person, setPerson] = useState('');
   const [amount, setAmount] = useState(0);
-  const [accountId, setAccountId] = useState(engine.activeAccounts[0]?.id ?? '');
+  const [accountId, setAccountId] = useState<string>(engine.activeAccounts[0]?.id ?? ELSEWHERE);
+  const [source, setSource] = useState('');
   const [lentOn, setLentOn] = useState(engine.asOf);
   const [dueOn, setDueOn] = useState('');
   const [note, setNote] = useState('');
 
-  const ready = person.trim().length > 0 && amount > 0 && accountId;
+  const fromElsewhere = accountId === ELSEWHERE;
+  const ready = person.trim().length > 0 && amount > 0;
 
   return (
     <Card title="Lend money">
@@ -243,13 +263,14 @@ function LendForm({ onSave, onCancel }: {
         <Field label="How much">
           <NumberInput value={amount} onChange={setAmount} min={0} />
         </Field>
-        <Field label="From which account">
+        <Field label="Where it came from">
           <select value={accountId} onChange={e => setAccountId(e.target.value)}>
             {engine.activeAccounts.map(a => (
               <option key={a.id} value={a.id}>
                 {a.name} — {money(engine.accountBalance(a.id))}
               </option>
             ))}
+            <option value={ELSEWHERE}>Somewhere else — not my accounts</option>
           </select>
         </Field>
         <Field label="Given on">
@@ -259,6 +280,14 @@ function LendForm({ onSave, onCancel }: {
           <input type="date" value={dueOn} onChange={e => setDueOn(e.target.value)} />
         </Field>
       </div>
+      {fromElsewhere && (
+        <Field label="Where from (optional)">
+          <input
+            type="text" value={source} onChange={e => setSource(e.target.value)}
+            placeholder="cash I was holding, money from my brother…"
+          />
+        </Field>
+      )}
       {!dueOn && (
         <div className="btnrow" style={{ marginBottom: 12 }}>
           {[{ d: 30, l: 'in a month' }, { d: 60, l: '2 months' }, { d: 90, l: '3 months' }].map(o => (
@@ -279,7 +308,10 @@ function LendForm({ onSave, onCancel }: {
           className="btn primary"
           disabled={!ready}
           onClick={() => onSave({
-            person, amount, accountId, lentOn,
+            person, amount,
+            accountId: fromElsewhere ? null : accountId,
+            source: fromElsewhere ? source : undefined,
+            lentOn,
             dueOn: dueOn || undefined,
             note: note.trim() || undefined,
           })}
@@ -291,8 +323,12 @@ function LendForm({ onSave, onCancel }: {
         <button className="btn ghost" onClick={onCancel}>Cancel</button>
       </div>
       <div className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
-        This takes the money out of the account now. It is not counted as spending,
-        and you will be reminded when it is due back.
+        {fromElsewhere
+          ? <>None of your balances change — this money never sat in one of your
+             accounts. It is still recorded as owed back to you, and you will be
+             reminded when it is due.</>
+          : <>This takes the money out of the account now. It is not counted as
+             spending, and you will be reminded when it is due back.</>}
       </div>
     </Card>
   );
