@@ -18,6 +18,13 @@ export default function More({ go }: { go: (r: Route) => void }) {
           onClick={() => go('accounts')}
         />
         <RowLink label="Budget" meta="this month" onClick={() => go('budget')} />
+        <RowLink
+          label="Messages"
+          meta={data.inbox.length > 0
+            ? <span className="pill bad">{data.inbox.length} to confirm</span>
+            : 'log a bank SMS'}
+          onClick={() => go('inbox')}
+        />
         {data.loan.enabled && (
           <RowLink label="Loan" meta={money(engine.loanOutstanding())} onClick={() => go('loan')} />
         )}

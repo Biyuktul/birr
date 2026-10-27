@@ -38,7 +38,9 @@ const TITLES: Record<Route, string> = {
 };
 
 /** Screens reached from More — they get a back arrow instead of a tab. */
-const SUB: Route[] = ['accounts', 'loan', 'ekub', 'relocation', 'budget', 'setup', 'checks', 'account'];
+const SUB: Route[] = [
+  'accounts', 'loan', 'ekub', 'relocation', 'budget', 'setup', 'checks', 'account', 'inbox',
+];
 
 const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
   {
@@ -48,10 +50,6 @@ const TABS: { route: Route; label: string; icon: JSX.Element }[] = [
   {
     route: 'calendar', label: 'Coming',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>,
-  },
-  {
-    route: 'inbox', label: 'Messages',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.2-3.6A8 8 0 1 1 21 12z" /></svg>,
   },
   {
     route: 'forecast', label: 'Forecast',
@@ -178,7 +176,7 @@ export default function App() {
           >
             <span style={{ position: 'relative' }}>
               {t.icon}
-              {t.route === 'inbox' && pendingCount > 0 && (
+              {t.route === 'more' && pendingCount > 0 && (
                 <span style={{
                   position: 'absolute', top: -3, right: -7,
                   background: 'var(--critical)', color: '#fff',
@@ -186,7 +184,7 @@ export default function App() {
                   minWidth: 15, height: 15, lineHeight: '15px', padding: '0 3px',
                 }}>{pendingCount}</span>
               )}
-              {t.route === 'more' && unconfirmed > 0 && (
+              {t.route === 'more' && pendingCount === 0 && unconfirmed > 0 && (
                 <span style={{
                   position: 'absolute', top: -1, right: -5,
                   background: 'var(--serious)', borderRadius: 999,

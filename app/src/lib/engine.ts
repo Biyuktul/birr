@@ -496,6 +496,18 @@ export function makeEngine(data: Data) {
     const f = forecast(90, 'late');
     const soon = addDaysISO(asOf, 10);
 
+    /* Messages captured by the phone shortcut land in the inbox unconfirmed.
+       Nothing touches the balances until they are, so say so here —
+       otherwise they sit unnoticed. */
+    if (data.inbox.length > 0) {
+      out.push({
+        level: 'warn',
+        text: `${data.inbox.length} bank message${data.inbox.length === 1 ? '' : 's'} waiting — `
+          + 'nothing is counted until you confirm it.',
+        action: { label: 'Open messages', route: 'inbox' },
+      });
+    }
+
     /* ---------- things that are wrong ---------- */
     if (sts.shortfall > 0)
       out.push({

@@ -302,3 +302,30 @@ describe('recording a loan payment', () => {
     }
   });
 });
+
+describe('messages waiting to be confirmed', () => {
+  it('are raised on the attention list, now that the tab is gone', () => {
+    const d = fresh();
+    d.inbox = [{
+      id: 'm1', raw: 'debited with ETB 50', sender: 'CBE', provider: 'CBE',
+      providerLabel: 'CBE', direction: 'debit', amount: 50, signedAmount: -50,
+      statedBalance: null, counterparty: null, accountDigits: null, accountId: 'cbe',
+      category: null, date: '2026-10-25', ref: null, looksLikeTransfer: false,
+      confidence: 0.8, missing: [], needsReview: false,
+    }];
+    const a = makeEngine(d).alerts().find(x => /bank message/i.test(x.text));
+    expect(a).toBeDefined();
+    expect(a!.action?.route).toBe('inbox');
+  });
+
+  it('say nothing when the inbox is empty', () => {
+    expect(makeEngine(fresh()).alerts().some(x => /bank message/i.test(x.text))).toBe(false);
+  });
+
+  it('do not touch any balance until confirmed', () => {
+    const d0 = fresh();
+    const before = total(d0);
+    const d1 = { ...d0, inbox: [{ ...({} as never) }] } as typeof d0;
+    expect(total(d1)).toBe(before);
+  });
+});

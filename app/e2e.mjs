@@ -36,13 +36,28 @@ await p.goto(BASE);
 await p.waitForSelector('nav.bottom');
 
 // ---- 1. every tab renders
-for (const tab of ['home','calendar','inbox','forecast','more']) {
+for (const tab of ['home','calendar','forecast','more']) {
   await p.evaluate(t => { location.hash = '/' + t; }, tab);
   await p.waitForTimeout(220);
   const txt = await p.textContent('main');
   if (!txt || txt.length < 40) fail(`${tab} rendered almost nothing`);
 }
-step('all 5 tabs render');
+step('all 4 tabs render');
+
+// ---- the Messages tab is gone, but the screen is still reachable
+const tabLabels = await p.$$eval('nav.bottom button', els => els.map(e => e.textContent.trim()));
+if (tabLabels.some(t => /message/i.test(t))) fail('Messages is still in the tab bar');
+else step('tab bar is ' + tabLabels.join(' · '));
+await p.evaluate(() => { location.hash = '/more'; });
+await p.waitForTimeout(300);
+const moreHas = await p.textContent('main');
+if (!/Messages/.test(moreHas)) fail('Messages is not reachable from More');
+else step('Messages still reachable from More');
+await p.evaluate(() => { location.hash = '/inbox'; });
+await p.waitForTimeout(300);
+const inboxTxt = await p.textContent('main');
+if (!/Paste a bank message/i.test(inboxTxt)) fail('the Messages screen no longer renders');
+else step('the Messages screen still works');
 
 // ---- 2. every sub screen renders
 for (const r of ['accounts','loan','ekub','relocation','budget','setup','checks','account']) {
